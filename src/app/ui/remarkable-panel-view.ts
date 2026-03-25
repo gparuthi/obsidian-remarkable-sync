@@ -131,17 +131,17 @@ export class RemarkablePanelView extends ItemView {
                     syncSelectedBtn.disabled = true
                 }
             }
-
-            // Refresh button
-            const refreshBtn = actions.createEl('button', {
-                cls: 'remarkable-btn remarkable-btn-icon',
-                attr: { 'aria-label': 'Refresh notebook list' }
-            })
-            setIcon(refreshBtn, 'refresh-cw')
-            refreshBtn.addEventListener('click', () => {
-                void this.refreshNotebooks()
-            })
         }
+
+        // Refresh button (always visible so users can re-evaluate connection state)
+        const refreshBtn = actions.createEl('button', {
+            cls: 'remarkable-btn remarkable-btn-icon',
+            attr: { 'aria-label': 'Refresh notebook list' }
+        })
+        setIcon(refreshBtn, 'refresh-cw')
+        refreshBtn.addEventListener('click', () => {
+            void this.refreshNotebooks()
+        })
 
         // Auth status indicator
         const statusEl = header.createDiv({ cls: 'remarkable-auth-status' })
@@ -423,6 +423,11 @@ export class RemarkablePanelView extends ItemView {
     }
 
     private async refreshNotebooks(): Promise<void> {
+        if (!this.plugin.isConnected) {
+            this.render()
+            return
+        }
+
         this.isLoading = true
         this.render()
 
