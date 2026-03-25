@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.0](https://github.com/dsebastien/obsidian-remarkable-sync/compare/1.2.0...1.3.0) (2026-03-25)
+
+### Features
+
+* **all:** added refresh button in remarkable panel ([1e7c3ff](https://github.com/dsebastien/obsidian-remarkable-sync/commit/1e7c3ff8e1d9e6ebd69a680c0ad3fc58905172d7)), closes [#2](https://github.com/dsebastien/obsidian-remarkable-sync/issues/2)
+* **all:** updated ([8751bb8](https://github.com/dsebastien/obsidian-remarkable-sync/commit/8751bb8ed8fcf87eae7ff6e099f6b7f9b8d7a7eb))
+
 ## [1.2.0](https://github.com/dsebastien/obsidian-remarkable-sync/compare/1.1.0...1.2.0) (2026-03-08)
 
 ### Features
@@ -57,6 +64,7 @@ All notable changes to this project will be documented in this file.
 - Inline progress indicators per notebook in panel
 - Settings for target folder, image format
 - Token storage outside vault for security
+
 
 
 

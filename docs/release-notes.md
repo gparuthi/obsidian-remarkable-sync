@@ -1,5 +1,12 @@
 # Release Notes
 
+## 1.3.0 (2026-03-25)
+
+### Features
+
+- **all:** added refresh button in remarkable panel
+- **all:** updated
+
 ## 1.2.0 (2026-03-08)
 
 ### Features
