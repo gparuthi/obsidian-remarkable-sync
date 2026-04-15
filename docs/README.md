@@ -1,3 +1,9 @@
+---
+title: Overview
+nav_order: 1
+permalink: /
+---
+
 # Remarkable Sync
 
 Connect your reMarkable tablet to Obsidian. Sync notebook pages as images with full folder hierarchy preserved.
