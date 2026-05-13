@@ -1,9 +1,6 @@
----
-title: Release notes
-nav_order: 98
----
-
 # Release Notes
+
+## 1.3.1 (2026-05-13)
 
 ## 1.3.0 (2026-03-25)
 
