@@ -63,7 +63,7 @@ Domain Types (domain/)
 | `remarkable-connect-device`    | Opens auth modal                                |
 | `remarkable-disconnect-device` | Clears tokens and disconnects                   |
 | `remarkable-list-notebooks`    | Lists all notebooks via Notice                  |
-| `remarkable-sync-notebook`     | Fuzzy-search picker to sync a specific notebook |
+| `sync-notebook`                | Fuzzy-search picker to sync a specific notebook |
 | `remarkable-import-rmdoc`      | Import a local .rmdoc file via file browser     |
 
 ## Data Flow

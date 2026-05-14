@@ -36,7 +36,7 @@ export function registerCommands(plugin: RemarkableSyncPlugin): void {
     })
 
     plugin.addCommand({
-        id: 'remarkable-sync-notebook',
+        id: 'sync-notebook',
         name: 'Sync a notebook',
         callback: () => {
             void syncNotebook(plugin)
