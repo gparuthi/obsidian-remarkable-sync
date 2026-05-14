@@ -1,5 +1,11 @@
 # Release Notes
 
+## 1.3.3 (2026-05-14)
+
+### Bug Fixes
+
+- **plugin:** rename sync command id to satisfy lint rule
+
 ## 1.3.2 (2026-05-13)
 
 ## 1.3.1 (2026-05-13)

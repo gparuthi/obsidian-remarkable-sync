@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.3](https://github.com/dsebastien/obsidian-remarkable-sync/compare/1.3.2...1.3.3) (2026-05-14)
+
+### Bug Fixes
+
+* **plugin:** rename sync command id to satisfy lint rule ([fe5350f](https://github.com/dsebastien/obsidian-remarkable-sync/commit/fe5350fd786faad4057a7169cfb698a2215ad5ca))
+
 ## [1.3.2](https://github.com/dsebastien/obsidian-remarkable-sync/compare/1.3.1...1.3.2) (2026-05-13)
 
 ## [1.3.1](https://github.com/dsebastien/obsidian-remarkable-sync/compare/1.3.0...1.3.1) (2026-05-13)
@@ -68,6 +74,7 @@ All notable changes to this project will be documented in this file.
 - Inline progress indicators per notebook in panel
 - Settings for target folder, image format
 - Token storage outside vault for security
+
 
 
 
