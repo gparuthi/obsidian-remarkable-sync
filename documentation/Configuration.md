@@ -2,7 +2,7 @@
 
 ## Plugin Settings
 
-All settings are configured via **Settings → Community plugins → Remarkable Sync**.
+All settings are configured via **Settings → Community plugins → Remarkable Synchronizer**.
 
 | Setting         | Default     | Description                                                                               |
 | --------------- | ----------- | ----------------------------------------------------------------------------------------- |

@@ -2,7 +2,7 @@
 
 ## Overview
 
-Remarkable Sync is an Obsidian desktop plugin that connects to the reMarkable cloud (or a self-hosted rmfakecloud server), downloads notebook pages, and renders them as images.
+Remarkable Synchronizer is an Obsidian desktop plugin that connects to the reMarkable cloud (or a self-hosted rmfakecloud server), downloads notebook pages, and renders them as images.
 
 ## Layers
 

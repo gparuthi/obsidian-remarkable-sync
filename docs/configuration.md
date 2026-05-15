@@ -5,7 +5,7 @@ nav_order: 3
 
 # Configuration
 
-All settings are accessible via **Settings → Community plugins → Remarkable Sync**.
+All settings are accessible via **Settings → Community plugins → Remarkable Synchronizer**.
 
 ## Settings
 

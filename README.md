@@ -1,4 +1,4 @@
-# Remarkable Sync
+# Remarkable Synchronizer
 
 An Obsidian plugin that connects to the reMarkable cloud to list, download, and sync notebook pages as images.
 
@@ -22,7 +22,7 @@ An Obsidian plugin that connects to the reMarkable cloud to list, download, and 
 
 1. In Obsidian, go to **Settings → Community plugins**.
 2. Disable **Restricted mode** if it's enabled.
-3. Select **Browse**, search for **Remarkable Sync**, install it, then enable it.
+3. Select **Browse**, search for **Remarkable Synchronizer**, install it, then enable it.
 
 You can also browse the catalog on the [Obsidian Community](https://community.obsidian.md/) website.
 
@@ -31,8 +31,8 @@ You can also browse the catalog on the [Obsidian Community](https://community.ob
 If the plugin isn't listed in the community catalog yet (or you want a specific version):
 
 1. Download `main.js`, `manifest.json`, and `styles.css` from the [latest release](https://github.com/dsebastien/obsidian-remarkable-sync/releases).
-2. Copy them into `<Vault>/.obsidian/plugins/remarkable-sync/`.
-3. Reload Obsidian and enable **Remarkable Sync** in **Settings → Community plugins**.
+2. Copy them into `<Vault>/.obsidian/plugins/remarkable-synchronizer/`.
+3. Reload Obsidian and enable **Remarkable Synchronizer** in **Settings → Community plugins**.
 
 ### BRAT (bleeding edge)
 
@@ -42,7 +42,7 @@ If the plugin isn't listed in the community catalog yet (or you want a specific 
 2. Run **BRAT: Add a beta plugin for testing** from the command palette.
 3. Paste `https://github.com/dsebastien/obsidian-remarkable-sync`.
 4. Select the latest version and confirm.
-5. Enable **Remarkable Sync** in **Settings → Community plugins**.
+5. Enable **Remarkable Synchronizer** in **Settings → Community plugins**.
 
 ## Quick Start
 

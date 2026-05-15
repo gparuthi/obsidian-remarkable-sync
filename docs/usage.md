@@ -23,7 +23,7 @@ nav_order: 2
 
 ### rmfakecloud
 
-1. Enable **"Use rmfakecloud"** in **Settings → Community plugins → Remarkable Sync → Cloud**
+1. Enable **"Use rmfakecloud"** in **Settings → Community plugins → Remarkable Synchronizer → Cloud**
 2. Enter your rmfakecloud server URL (e.g., `https://cloud.example.com`)
 3. Run the **"Connect to reMarkable cloud"** command
 4. Open your rmfakecloud web interface and generate a one-time code
