@@ -8,15 +8,15 @@ import { log } from '../../utils/log'
  */
 export function importRmdoc(plugin: RemarkableSyncPlugin): void {
     // Create a hidden file input to trigger the native file browser
-    const fileInput = document.createElement('input')
+    const fileInput = activeDocument.createElement('input')
     fileInput.type = 'file'
     fileInput.accept = '.rmdoc'
     fileInput.addClass('hidden')
-    document.body.appendChild(fileInput)
+    activeDocument.body.appendChild(fileInput)
 
     fileInput.addEventListener('change', () => {
         const file = fileInput.files?.[0]
-        document.body.removeChild(fileInput)
+        activeDocument.body.removeChild(fileInput)
 
         if (!file) {
             return
@@ -30,7 +30,7 @@ export function importRmdoc(plugin: RemarkableSyncPlugin): void {
 
     // Also clean up if the user cancels the file dialog
     fileInput.addEventListener('cancel', () => {
-        document.body.removeChild(fileInput)
+        activeDocument.body.removeChild(fileInput)
     })
 
     fileInput.click()

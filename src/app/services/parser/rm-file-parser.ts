@@ -57,7 +57,7 @@ function parseBlock(reader: BinaryReader): Stroke | null {
     reader.readUint8() // unknown, always 0
     reader.readUint8() // min_version
     const currentVersion = reader.readUint8()
-    const blockType = reader.readUint8()
+    const blockType = reader.readUint8() as BlockType
     const blockEnd = reader.position + blockLength
 
     let stroke: Stroke | null = null
@@ -157,7 +157,7 @@ function parseSceneLineItemBlock(
  */
 function parseLineValue(reader: BinaryReader, subEnd: number): Stroke | null {
     // Scene item type byte (3 = Line)
-    const sceneType = reader.readUint8()
+    const sceneType = reader.readUint8() as SceneItemType
     if (sceneType !== SceneItemType.Line) {
         return null
     }

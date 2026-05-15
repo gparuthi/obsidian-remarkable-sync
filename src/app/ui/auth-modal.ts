@@ -6,7 +6,7 @@ export class AuthModal extends Modal {
     private readonly plugin: RemarkableSyncPlugin
     private readonly onSuccess?: () => void
     private deviceCode = ''
-    private autoCloseTimeout: ReturnType<typeof setTimeout> | null = null
+    private autoCloseTimeout: number | null = null
 
     constructor(plugin: RemarkableSyncPlugin, onSuccess?: () => void) {
         super(plugin.app)
@@ -126,7 +126,7 @@ export class AuthModal extends Modal {
                 })
 
                 // Auto-close after delay
-                this.autoCloseTimeout = setTimeout(() => {
+                this.autoCloseTimeout = window.setTimeout(() => {
                     this.onSuccess?.()
                     this.close()
                 }, 1500)
@@ -145,12 +145,12 @@ export class AuthModal extends Modal {
         })
 
         // Auto-focus the input
-        setTimeout(() => codeInput.focus(), 50)
+        window.setTimeout(() => codeInput.focus(), 50)
     }
 
     override onClose(): void {
         if (this.autoCloseTimeout) {
-            clearTimeout(this.autoCloseTimeout)
+            window.clearTimeout(this.autoCloseTimeout)
             this.autoCloseTimeout = null
         }
         this.contentEl.empty()
