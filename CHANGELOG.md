@@ -2,6 +2,8 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.5](https://github.com/dsebastien/obsidian-remarkable-sync/compare/1.3.4...1.3.5) (2026-05-15)
+
 ## [1.3.4](https://github.com/dsebastien/obsidian-remarkable-sync/compare/1.3.3...1.3.4) (2026-05-15)
 
 ## [1.3.3](https://github.com/dsebastien/obsidian-remarkable-sync/compare/1.3.2...1.3.3) (2026-05-14)
@@ -76,6 +78,7 @@ All notable changes to this project will be documented in this file.
 - Inline progress indicators per notebook in panel
 - Settings for target folder, image format
 - Token storage outside vault for security
+
 
 
 
