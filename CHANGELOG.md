@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4.1](https://github.com/dsebastien/obsidian-remarkable-sync/compare/1.4.0...1.4.1) (2026-05-15)
+
+### Bug Fixes
+
+* **all:** fixed bounds calculation before rendering the images ([13adc67](https://github.com/dsebastien/obsidian-remarkable-sync/commit/13adc6794b8ba42d1780aed3a766f25e7544f44e)), closes [#3](https://github.com/dsebastien/obsidian-remarkable-sync/issues/3)
+
 ## [1.4.0](https://github.com/dsebastien/obsidian-remarkable-sync/compare/1.3.7...1.4.0) (2026-05-15)
 
 ### Features
@@ -88,6 +94,7 @@ All notable changes to this project will be documented in this file.
 - Inline progress indicators per notebook in panel
 - Settings for target folder, image format
 - Token storage outside vault for security
+
 
 
 
