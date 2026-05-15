@@ -1,5 +1,5 @@
 {
-    "name": "remarkable-sync",
+    "name": "remarkable-synchronizer",
     "version": "1.3.4",
     "description": "Connect to the reMarkable cloud, list, download, and sync notebook pages as images.",
     "author": {
