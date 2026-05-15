@@ -7,7 +7,7 @@ An Obsidian plugin that connects to the reMarkable cloud to list, download, and 
 - **reMarkable cloud integration** — connect with a one-time code, list all notebooks
 - **rmfakecloud support** — connect to a self-hosted [rmfakecloud](https://github.com/ddvk/rmfakecloud) server as an alternative to the official cloud
 - **Page rendering** — render .rm v6 stroke data to PNG/JPEG images
-- **Sidebar panel** — browse notebooks with folder hierarchy, download per notebook
+- **Sidebar panel** — browse notebooks with foldable folder hierarchy, search, multi-select, and per-notebook download
 - **Folder hierarchy preservation** — reMarkable folder structure mirrored in vault
 - **Local .rmdoc import** — import .rmdoc files directly without cloud connection
 

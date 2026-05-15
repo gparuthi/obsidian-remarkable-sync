@@ -249,7 +249,39 @@
 }
 
 .remarkable-folder-header {
-    @apply flex items-center gap-1.5 py-1.5 px-1 text-xs font-medium mt-2;
+    @apply flex items-center gap-1.5 py-1.5 px-1 text-xs font-medium mt-2 rounded cursor-pointer select-none;
+    color: var(--text-muted);
+}
+
+.remarkable-folder-header:hover {
+    background-color: var(--background-modifier-hover);
+    color: var(--text-normal);
+}
+
+.remarkable-folder-header:focus-visible {
+    outline: 2px solid var(--interactive-accent);
+    outline-offset: -2px;
+}
+
+.remarkable-folder-chevron {
+    @apply inline-flex items-center;
+}
+
+.remarkable-folder-chevron .svg-icon {
+    @apply w-3.5 h-3.5;
+}
+
+.remarkable-folder-icon {
+    @apply inline-flex items-center;
+}
+
+.remarkable-folder-label {
+    @apply flex-1 min-w-0 truncate;
+}
+
+.remarkable-folder-count {
+    @apply text-xs px-1.5 py-0.5 rounded;
+    background-color: var(--background-modifier-border);
     color: var(--text-muted);
 }
 

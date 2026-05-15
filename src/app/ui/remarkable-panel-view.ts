@@ -18,11 +18,16 @@ export const REMARKABLE_PANEL_VIEW_TYPE = 'remarkable-panel'
 
 type FilterMode = 'all' | 'selected' | 'unselected'
 
+// Key used to group top-level notebooks (no folderPath). Displayed as ROOT_FOLDER_LABEL.
+const ROOT_FOLDER_KEY = '__root__'
+const ROOT_FOLDER_LABEL = 'Top level'
+
 export class RemarkablePanelView extends ItemView {
     private readonly plugin: RemarkableSyncPlugin
     private notebooks: NotebookSummary[] = []
     private notebookProgress: Map<string, PipelineProgress> = new Map()
     private selectedIds: Set<string> = new Set()
+    private collapsedFolders: Set<string> = new Set()
     private isLoading = false
     private isBulkSyncing = false
     private searchQuery = ''
@@ -288,10 +293,10 @@ export class RemarkablePanelView extends ItemView {
             return
         }
 
-        // Group by folder path
+        // Group by folder path. Top-level notebooks use ROOT_FOLDER_KEY.
         const grouped = new Map<string, NotebookSummary[]>()
         for (const nb of filtered) {
-            const folder = nb.folderPath || 'Root'
+            const folder = nb.folderPath || ROOT_FOLDER_KEY
             const existing = grouped.get(folder)
             if (existing) {
                 existing.push(nb)
@@ -300,23 +305,78 @@ export class RemarkablePanelView extends ItemView {
             }
         }
 
-        // Sort folders
-        const sortedFolders = Array.from(grouped.keys()).sort()
+        // Root group first, then remaining folders alphabetically. This makes
+        // top-level notebooks easy to find (previously they had no header and
+        // were buried in alphabetical position).
+        const otherFolders = Array.from(grouped.keys())
+            .filter((f) => f !== ROOT_FOLDER_KEY)
+            .sort()
+        const sortedFolders = grouped.has(ROOT_FOLDER_KEY)
+            ? [ROOT_FOLDER_KEY, ...otherFolders]
+            : otherFolders
+
+        // While a search is active, force-expand all folders so matches are
+        // never hidden inside collapsed groups.
+        const searchActive = this.searchQuery.trim().length > 0
 
         for (const folder of sortedFolders) {
             const notebooks = grouped.get(folder)
             if (!notebooks) continue
 
-            if (folder !== 'Root') {
-                const folderHeader = list.createDiv({ cls: 'remarkable-folder-header' })
-                setIcon(folderHeader.createSpan(), 'folder')
-                folderHeader.createSpan({ text: folder })
-            }
+            const isCollapsed = !searchActive && this.collapsedFolders.has(folder)
+            const label = folder === ROOT_FOLDER_KEY ? ROOT_FOLDER_LABEL : folder
+            this.renderFolderHeader(list, folder, label, notebooks.length, isCollapsed)
 
-            for (const nb of notebooks) {
-                this.renderNotebookRow(list, nb)
+            if (!isCollapsed) {
+                for (const nb of notebooks) {
+                    this.renderNotebookRow(list, nb)
+                }
             }
         }
+    }
+
+    private renderFolderHeader(
+        container: HTMLElement,
+        folderKey: string,
+        label: string,
+        count: number,
+        isCollapsed: boolean
+    ): void {
+        const folderHeader = container.createDiv({
+            cls: `remarkable-folder-header${isCollapsed ? ' remarkable-folder-header-collapsed' : ''}`,
+            attr: {
+                'role': 'button',
+                'tabindex': '0',
+                'aria-expanded': isCollapsed ? 'false' : 'true',
+                'aria-label': `${isCollapsed ? 'Expand' : 'Collapse'} folder ${label}`
+            }
+        })
+        setIcon(
+            folderHeader.createSpan({ cls: 'remarkable-folder-chevron' }),
+            isCollapsed ? 'chevron-right' : 'chevron-down'
+        )
+        setIcon(folderHeader.createSpan({ cls: 'remarkable-folder-icon' }), 'folder')
+        folderHeader.createSpan({ cls: 'remarkable-folder-label', text: label })
+        folderHeader.createSpan({
+            cls: 'remarkable-folder-count',
+            text: String(count)
+        })
+
+        const toggle = (): void => {
+            if (this.collapsedFolders.has(folderKey)) {
+                this.collapsedFolders.delete(folderKey)
+            } else {
+                this.collapsedFolders.add(folderKey)
+            }
+            this.render()
+        }
+        folderHeader.addEventListener('click', toggle)
+        folderHeader.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                toggle()
+            }
+        })
     }
 
     private getSyncStatus(notebook: NotebookSummary): SyncStatus {
