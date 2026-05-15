@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4.0](https://github.com/dsebastien/obsidian-remarkable-sync/compare/1.3.7...1.4.0) (2026-05-15)
+
+### Features
+
+* **all:** enable folding folders in the panel ([6ae88cf](https://github.com/dsebastien/obsidian-remarkable-sync/commit/6ae88cf00c678521cca5bedc07e2f962943626ef)), closes [#4](https://github.com/dsebastien/obsidian-remarkable-sync/issues/4)
+
 ## [1.3.7](https://github.com/dsebastien/obsidian-remarkable-sync/compare/1.3.6...1.3.7) (2026-05-15)
 
 ## [1.3.6](https://github.com/dsebastien/obsidian-remarkable-sync/compare/1.3.5...1.3.6) (2026-05-15)
@@ -82,6 +88,7 @@ All notable changes to this project will be documented in this file.
 - Inline progress indicators per notebook in panel
 - Settings for target folder, image format
 - Token storage outside vault for security
+
 
 
 

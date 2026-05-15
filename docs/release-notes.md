@@ -1,5 +1,11 @@
 # Release Notes
 
+## 1.4.0 (2026-05-15)
+
+### Features
+
+- **all:** enable folding folders in the panel
+
 ## 1.3.7 (2026-05-15)
 
 ## 1.3.6 (2026-05-15)
