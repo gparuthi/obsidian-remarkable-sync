@@ -10,14 +10,21 @@ import {
 /**
  * The reMarkable coordinate system has its x-origin at the center of the page,
  * so raw x values range from approximately -PAGE_WIDTH/2 to +PAGE_WIDTH/2.
- * We offset by half the page width to map to canvas coordinates (0 to PAGE_WIDTH).
+ * Callers pass an `xOffset` (typically canvas width / 2) so strokes are
+ * centered horizontally on whatever-sized canvas the page-renderer chose. The
+ * default keeps the legacy behavior for any caller that doesn't size its own
+ * canvas.
  */
-const X_OFFSET = PAGE_WIDTH / 2
+const DEFAULT_X_OFFSET = PAGE_WIDTH / 2
 
 /**
  * Render a single stroke onto a canvas 2D context
  */
-export function renderStroke(ctx: OffscreenCanvasRenderingContext2D, stroke: Stroke): void {
+export function renderStroke(
+    ctx: OffscreenCanvasRenderingContext2D,
+    stroke: Stroke,
+    xOffset: number = DEFAULT_X_OFFSET
+): void {
     if (ERASER_PEN_TYPES.has(stroke.penType)) {
         return
     }
@@ -47,7 +54,7 @@ export function renderStroke(ctx: OffscreenCanvasRenderingContext2D, stroke: Str
         const point = points[0]!
         const radius = (point.width * widthMultiplier * stroke.thickness) / 2
         ctx.beginPath()
-        ctx.arc(point.x + X_OFFSET, point.y, Math.max(radius, 0.5), 0, Math.PI * 2)
+        ctx.arc(point.x + xOffset, point.y, Math.max(radius, 0.5), 0, Math.PI * 2)
         ctx.fill()
     } else {
         for (let i = 0; i < points.length - 1; i++) {
@@ -60,8 +67,8 @@ export function renderStroke(ctx: OffscreenCanvasRenderingContext2D, stroke: Str
 
             ctx.beginPath()
             ctx.lineWidth = Math.max(avgWidth, 0.5)
-            ctx.moveTo(p1.x + X_OFFSET, p1.y)
-            ctx.lineTo(p2.x + X_OFFSET, p2.y)
+            ctx.moveTo(p1.x + xOffset, p1.y)
+            ctx.lineTo(p2.x + xOffset, p2.y)
             ctx.stroke()
         }
     }
