@@ -1,5 +1,11 @@
 # Release Notes
 
+## 1.4.2 (2026-05-30)
+
+### Bug Fixes
+
+- **sync:** send rm-filename header on /sync/v3/files requests
+
 ## 1.4.1 (2026-05-15)
 
 ### Bug Fixes

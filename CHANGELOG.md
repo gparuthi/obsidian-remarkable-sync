@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4.2](https://github.com/dsebastien/obsidian-remarkable-sync/compare/1.4.1...1.4.2) (2026-05-30)
+
+### Bug Fixes
+
+* **sync:** send rm-filename header on /sync/v3/files requests ([3602a2e](https://github.com/dsebastien/obsidian-remarkable-sync/commit/3602a2ef14dc26cfabd9730ef8ac9cb9fda8e2df)), closes [#6](https://github.com/dsebastien/obsidian-remarkable-sync/issues/6)
+
 ## [1.4.1](https://github.com/dsebastien/obsidian-remarkable-sync/compare/1.4.0...1.4.1) (2026-05-15)
 
 ### Bug Fixes
@@ -94,6 +100,7 @@ All notable changes to this project will be documented in this file.
 - Inline progress indicators per notebook in panel
 - Settings for target folder, image format
 - Token storage outside vault for security
+
 
 
 
