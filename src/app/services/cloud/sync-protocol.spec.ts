@@ -1,7 +1,45 @@
-import { test, expect, describe } from 'bun:test'
-import { parseIndex } from './sync-protocol'
+import { test, expect, describe, mock, beforeEach } from 'bun:test'
+import { docIndexFilename, fetchBlob, parseIndex, ROOT_INDEX_FILENAME } from './sync-protocol'
+
+interface RecordedRequest {
+    url: string
+    headers?: Record<string, string>
+}
+
+const recordedRequests: RecordedRequest[] = []
+
+void mock.module('obsidian', () => ({
+    requestUrl: async (options: { url: string; headers?: Record<string, string> }) => {
+        recordedRequests.push({ url: options.url, headers: options.headers })
+        return { status: 200, text: '', json: {}, arrayBuffer: new ArrayBuffer(8) }
+    }
+}))
 
 describe('sync-protocol', () => {
+    describe('fetchBlob rm-filename header', () => {
+        beforeEach(() => {
+            recordedRequests.length = 0
+        })
+
+        test('sends rm-filename and Authorization headers on /sync/v3/files/{hash}', async () => {
+            await fetchBlob('token-abc', 'hash123', 'doc.metadata', 'https://sync.example')
+
+            expect(recordedRequests.length).toBe(1)
+            const req = recordedRequests[0]!
+            expect(req.url).toBe('https://sync.example/sync/v3/files/hash123')
+            expect(req.headers?.['rm-filename']).toBe('doc.metadata')
+            expect(req.headers?.['Authorization']).toBe('Bearer token-abc')
+        })
+
+        test('ROOT_INDEX_FILENAME is "root.docSchema"', () => {
+            expect(ROOT_INDEX_FILENAME).toBe('root.docSchema')
+        })
+
+        test('docIndexFilename appends ".docSchema" to the document id', () => {
+            expect(docIndexFilename('uuid-1')).toBe('uuid-1.docSchema')
+        })
+    })
+
     describe('parseIndex', () => {
         test('parses entries with header lines', () => {
             const index = '3\n2\nabc123:80000000:folder-id-1:0:0\ndef456:0:doc-id-1:0:512\n'

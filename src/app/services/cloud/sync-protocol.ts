@@ -66,12 +66,26 @@ export async function fetchRootHash(
     }
 }
 
+// Sync v3 `/files/{hash}` requires an `rm-filename` header whose value matches
+// the blob's logical name; missing or wrong values return HTTP 400
+// ({"message":"unexpected 'rm-filename' http header"}). Index blobs use the
+// ".docSchema" extension; content blobs use their real filename from the index.
+export const ROOT_INDEX_FILENAME = 'root.docSchema'
+export function docIndexFilename(docId: string): string {
+    return `${docId}.docSchema`
+}
+
 /**
  * Fetch a file by its hash directly from the sync service.
+ *
+ * `rmFilename` is the blob's logical name (e.g. `root.docSchema`,
+ * `<uuid>.docSchema`, `<uuid>.metadata`). The server validates it and
+ * returns HTTP 400 if missing or wrong.
  */
 export async function fetchBlob(
     userToken: string,
     hash: string,
+    rmFilename: string,
     syncBaseUrl: string
 ): Promise<ArrayBuffer | null> {
     try {
@@ -79,7 +93,8 @@ export async function fetchBlob(
             url: `${syncBaseUrl}/sync/v3/files/${hash}`,
             method: 'GET',
             headers: {
-                Authorization: `Bearer ${userToken}`
+                Authorization: `Bearer ${userToken}`,
+                'rm-filename': rmFilename
             }
         })
 

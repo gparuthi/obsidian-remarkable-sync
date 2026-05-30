@@ -2,7 +2,13 @@ import { log } from '../../../utils/log'
 import type { NotebookSummary } from '../../domain/notebook'
 import type { RemarkableDocumentMetadata } from '../../domain/remarkable-types'
 import type { RemarkableSyncPlugin } from '../../plugin'
-import { fetchBlob, fetchRootHash, parseIndex } from './sync-protocol'
+import {
+    docIndexFilename,
+    fetchBlob,
+    fetchRootHash,
+    parseIndex,
+    ROOT_INDEX_FILENAME
+} from './sync-protocol'
 import { resolveCloudUrls } from './cloud-urls'
 
 export interface RemarkableCloudService {
@@ -24,7 +30,12 @@ export function createRemarkableCloudService(plugin: RemarkableSyncPlugin): Rema
         entryId: string,
         syncBaseUrl: string
     ): Promise<RemarkableDocumentMetadata | null> {
-        const indexBlob = await fetchBlob(userToken, indexHash, syncBaseUrl)
+        const indexBlob = await fetchBlob(
+            userToken,
+            indexHash,
+            docIndexFilename(entryId),
+            syncBaseUrl
+        )
         if (!indexBlob) return null
 
         const indexContent = new TextDecoder().decode(indexBlob)
@@ -33,7 +44,12 @@ export function createRemarkableCloudService(plugin: RemarkableSyncPlugin): Rema
         const metadataEntry = fileEntries.find((e) => e.id.endsWith('.metadata'))
         if (!metadataEntry) return null
 
-        const metadataBlob = await fetchBlob(userToken, metadataEntry.hash, syncBaseUrl)
+        const metadataBlob = await fetchBlob(
+            userToken,
+            metadataEntry.hash,
+            metadataEntry.id,
+            syncBaseUrl
+        )
         if (!metadataBlob) return null
 
         try {
@@ -81,7 +97,12 @@ export function createRemarkableCloudService(plugin: RemarkableSyncPlugin): Rema
             const { rootHash, userToken } = result
 
             // Step 2: Download and parse root index
-            const rootBlob = await fetchBlob(userToken, rootHash, syncBaseUrl)
+            const rootBlob = await fetchBlob(
+                userToken,
+                rootHash,
+                ROOT_INDEX_FILENAME,
+                syncBaseUrl
+            )
             if (!rootBlob) return []
 
             const rootContent = new TextDecoder().decode(rootBlob)
@@ -178,7 +199,12 @@ export function createRemarkableCloudService(plugin: RemarkableSyncPlugin): Rema
                 if (!result) return null
                 userToken = result.userToken
 
-                const rootBlob = await fetchBlob(userToken, result.rootHash, syncBaseUrl)
+                const rootBlob = await fetchBlob(
+                    userToken,
+                    result.rootHash,
+                    ROOT_INDEX_FILENAME,
+                    syncBaseUrl
+                )
                 if (!rootBlob) return null
 
                 const rootContent = new TextDecoder().decode(rootBlob)
@@ -201,7 +227,12 @@ export function createRemarkableCloudService(plugin: RemarkableSyncPlugin): Rema
             }
 
             // Download document index
-            const indexBlob = await fetchBlob(userToken, indexHash, syncBaseUrl)
+            const indexBlob = await fetchBlob(
+                userToken,
+                indexHash,
+                docIndexFilename(documentId),
+                syncBaseUrl
+            )
             if (!indexBlob) return null
 
             const indexContent = new TextDecoder().decode(indexBlob)
@@ -210,7 +241,7 @@ export function createRemarkableCloudService(plugin: RemarkableSyncPlugin): Rema
             // Download all files in parallel
             const fileResults = await Promise.allSettled(
                 fileEntries.map(async (entry) => {
-                    const data = await fetchBlob(userToken, entry.hash, syncBaseUrl)
+                    const data = await fetchBlob(userToken, entry.hash, entry.id, syncBaseUrl)
                     return { path: entry.id, data }
                 })
             )
