@@ -95,7 +95,7 @@ The authentication flow and sync protocol are identical to the official cloud. A
 
 ## Privacy
 
-- Authentication tokens stored at `~/.remarkable-sync/token.json` (outside vault)
+- Authentication tokens are stored at `~/.remarkable-sync/token.json`, deliberately **outside the vault**. This keeps long-lived reMarkable credentials out of any vault sync/sharing (e.g. Obsidian Sync, Git, cloud folders) so they are never accidentally distributed alongside notes. This is the only file the plugin reads or writes outside the vault, and is why the plugin is desktop-only.
 - No telemetry or third-party analytics
 - Network requests only to reMarkable cloud (or your rmfakecloud server when enabled)
 
