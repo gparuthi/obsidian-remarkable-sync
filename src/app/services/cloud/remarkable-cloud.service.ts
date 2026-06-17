@@ -97,12 +97,7 @@ export function createRemarkableCloudService(plugin: RemarkableSyncPlugin): Rema
             const { rootHash, userToken } = result
 
             // Step 2: Download and parse root index
-            const rootBlob = await fetchBlob(
-                userToken,
-                rootHash,
-                ROOT_INDEX_FILENAME,
-                syncBaseUrl
-            )
+            const rootBlob = await fetchBlob(userToken, rootHash, ROOT_INDEX_FILENAME, syncBaseUrl)
             if (!rootBlob) return []
 
             const rootContent = new TextDecoder().decode(rootBlob)

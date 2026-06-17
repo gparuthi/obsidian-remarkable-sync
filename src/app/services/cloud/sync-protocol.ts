@@ -93,7 +93,7 @@ export async function fetchBlob(
             url: `${syncBaseUrl}/sync/v3/files/${hash}`,
             method: 'GET',
             headers: {
-                Authorization: `Bearer ${userToken}`,
+                'Authorization': `Bearer ${userToken}`,
                 'rm-filename': rmFilename
             }
         })
