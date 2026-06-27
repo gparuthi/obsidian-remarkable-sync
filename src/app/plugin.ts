@@ -61,11 +61,25 @@ export class RemarkableSyncPlugin extends Plugin {
         // heavy work during onload.
         this.app.workspace.onLayoutReady(() => {
             if (this.settings.syncOnStartup) {
-                void syncAllNotebooks(this, { silent: true }).catch((error: unknown) => {
-                    log('Startup sync failed', 'error', error)
-                })
+                this.runAutoSync()
             }
             this.setupAutoSync()
+        })
+    }
+
+    /**
+     * Run one unattended (silent) auto-sync pass, scoped to the configured
+     * source folder and, when enabled, to the single newest-modified notebook.
+     * Fire-and-forget: errors are caught + logged so a failed sync never crashes
+     * Obsidian or wedges the periodic loop.
+     */
+    private runAutoSync(): void {
+        void syncAllNotebooks(this, {
+            silent: true,
+            folder: this.settings.sourceFolder,
+            newestOnly: this.settings.autoSyncNewestOnly
+        }).catch((error: unknown) => {
+            log('Auto-sync failed', 'error', error)
         })
     }
 
@@ -99,9 +113,7 @@ export class RemarkableSyncPlugin extends Plugin {
         )
         const intervalId = window.setInterval(
             () => {
-                void syncAllNotebooks(this, { silent: true }).catch((error: unknown) => {
-                    log('Auto-sync failed', 'error', error)
-                })
+                this.runAutoSync()
             },
             minutes * 60 * 1000
         )
@@ -161,6 +173,12 @@ export class RemarkableSyncPlugin extends Plugin {
             }
             if (loadedSettings.autoSyncIntervalMinutes !== undefined) {
                 draft.autoSyncIntervalMinutes = loadedSettings.autoSyncIntervalMinutes
+            }
+            if (loadedSettings.sourceFolder !== undefined) {
+                draft.sourceFolder = loadedSettings.sourceFolder
+            }
+            if (loadedSettings.autoSyncNewestOnly !== undefined) {
+                draft.autoSyncNewestOnly = loadedSettings.autoSyncNewestOnly
             }
             if (loadedSettings.syncStore !== undefined) {
                 draft.syncStore = loadedSettings.syncStore

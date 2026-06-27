@@ -6,8 +6,42 @@ export function renderSyncSection(containerEl: HTMLElement, plugin: RemarkableSy
     new Setting(containerEl).setName('Automatic sync').setHeading()
 
     new Setting(containerEl)
+        .setName('Source folder')
+        .setDesc(
+            'reMarkable cloud folder that auto-sync reads from (e.g. /2026). Includes its sub-folders. Leave empty to use all folders. Does not affect the manual "Sync a notebook" command.'
+        )
+        .addText((text) => {
+            const saveSourceFolder = debounce(
+                async (value: string) => {
+                    await plugin.updateSettings((draft) => {
+                        draft.sourceFolder = value.trim()
+                    })
+                },
+                500,
+                true
+            )
+
+            text.setPlaceholder('/2026')
+                .setValue(plugin.settings.sourceFolder)
+                .onChange(saveSourceFolder)
+        })
+
+    new Setting(containerEl)
+        .setName('Sync newest notebook only')
+        .setDesc(
+            'When auto-syncing, sync only the single most-recently-modified notebook in the source folder. Turn off to auto-sync every notebook in the source folder.'
+        )
+        .addToggle((toggle) => {
+            toggle.setValue(plugin.settings.autoSyncNewestOnly).onChange(async (value) => {
+                await plugin.updateSettings((draft) => {
+                    draft.autoSyncNewestOnly = value
+                })
+            })
+        })
+
+    new Setting(containerEl)
         .setName('Sync on startup')
-        .setDesc('Sync all notebooks once when Obsidian starts.')
+        .setDesc('Run an auto-sync once when Obsidian starts.')
         .addToggle((toggle) => {
             toggle.setValue(plugin.settings.syncOnStartup).onChange(async (value) => {
                 await plugin.updateSettings((draft) => {
@@ -18,7 +52,7 @@ export function renderSyncSection(containerEl: HTMLElement, plugin: RemarkableSy
 
     new Setting(containerEl)
         .setName('Periodic auto-sync')
-        .setDesc('Periodically sync all notebooks while Obsidian is open.')
+        .setDesc('Periodically run an auto-sync while Obsidian is open.')
         .addToggle((toggle) => {
             toggle.setValue(plugin.settings.autoSync).onChange(async (value) => {
                 await plugin.updateSettings((draft) => {
