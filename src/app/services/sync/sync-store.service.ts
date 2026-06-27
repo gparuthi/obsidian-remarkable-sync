@@ -1,5 +1,5 @@
 import type { RemarkableSyncPlugin } from '../../plugin'
-import type { NotebookSyncState, SyncStore } from '../../domain/sync-state'
+import type { NotebookSyncState, PageOcrState, SyncStore } from '../../domain/sync-state'
 import { DEFAULT_SYNC_STORE } from '../../domain/sync-state'
 import { log } from '../../../utils/log'
 
@@ -8,7 +8,8 @@ export interface SyncStoreService {
     updateState(
         remarkableId: string,
         lastModifiedCloud: number,
-        syncedPageCount: number
+        syncedPageCount: number,
+        pages?: Record<string, PageOcrState>
     ): Promise<void>
     clearAll(): Promise<void>
     getStore(): SyncStore
@@ -22,14 +23,20 @@ export function createSyncStoreService(plugin: RemarkableSyncPlugin): SyncStoreS
     async function updateState(
         remarkableId: string,
         lastModifiedCloud: number,
-        syncedPageCount: number
+        syncedPageCount: number,
+        pages?: Record<string, PageOcrState>
     ): Promise<void> {
         await plugin.updateSettings((draft) => {
+            // Preserve any existing per-page OCR state when the caller does not
+            // supply a fresh map (non-OCR syncs must not wipe OCR progress).
+            const existingPages = draft.syncStore.notebooks[remarkableId]?.pages
+            const nextPages = pages ?? existingPages
             draft.syncStore.notebooks[remarkableId] = {
                 remarkableId,
                 lastSyncedAt: Date.now(),
                 lastModifiedCloud,
-                syncedPageCount
+                syncedPageCount,
+                ...(nextPages ? { pages: nextPages } : {})
             }
         })
         log('Sync state updated', 'debug', { remarkableId })

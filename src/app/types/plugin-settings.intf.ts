@@ -15,6 +15,10 @@ export interface PluginSettings {
     autoSyncIntervalMinutes: number
     sourceFolder: string
     autoSyncNewestOnly: boolean
+    /** Transcribe each synced page to markdown via the local OCR endpoint. */
+    ocrEnabled: boolean
+    /** URL of the local md_capture_server `/ocr` endpoint (image in → markdown out). */
+    mdserverOcrUrl: string
     syncStore: SyncStore
 }
 
@@ -30,5 +34,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     autoSyncIntervalMinutes: 15,
     sourceFolder: '/2026',
     autoSyncNewestOnly: true,
+    ocrEnabled: false,
+    mdserverOcrUrl: 'http://localhost:1250/ocr',
     syncStore: DEFAULT_SYNC_STORE
 }

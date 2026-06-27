@@ -1,0 +1,165 @@
+import { test, expect, describe } from 'bun:test'
+import {
+    assembleNotebookMarkdown,
+    computeOcrHash,
+    parseManagedBlocks,
+    renderBlock
+} from './ocr-markdown'
+import type { OcrPageInput } from './ocr-markdown'
+
+function input(pageId: string, pageIndex: number, markdown: string): OcrPageInput {
+    return {
+        pageId,
+        pageIndex,
+        label: `Page ${pageIndex + 1}`,
+        markdown,
+        srcHash: `src-${pageId}`,
+        ocrHash: computeOcrHash(markdown)
+    }
+}
+
+function blocksOf(content: string): ReturnType<typeof parseManagedBlocks> {
+    return parseManagedBlocks(content)
+}
+
+describe('renderBlock / parseManagedBlocks round-trip', () => {
+    test('a rendered block parses back with matching fields and hash', () => {
+        const inp = input('p1', 0, 'Hello **world**\n- item')
+        const text = renderBlock(inp)
+        const [block] = blocksOf(text)
+        expect(block).toBeDefined()
+        expect(block!.pageId).toBe('p1')
+        expect(block!.label).toBe('Page 1')
+        expect(block!.body).toBe('Hello **world**\n- item')
+        // ocr marker matches the body hash → not "hand-edited".
+        expect(block!.ocrHash).toBe(computeOcrHash(block!.body))
+    })
+})
+
+describe('assembleNotebookMarkdown — new pages', () => {
+    test('creates one note from an empty file with newest page on top', () => {
+        const out = assembleNotebookMarkdown('', [
+            input('p1', 0, 'first page'),
+            input('p2', 1, 'second page')
+        ])
+        const blocks = blocksOf(out)
+        expect(blocks.map((b) => b.pageId)).toEqual(['p2', 'p1'])
+        expect(out.indexOf('second page')).toBeLessThan(out.indexOf('first page'))
+        expect(out.endsWith('\n')).toBe(true)
+    })
+
+    test('inserts a new page at the top of an existing managed region', () => {
+        const existing = assembleNotebookMarkdown('', [input('p1', 0, 'page one')])
+        const out = assembleNotebookMarkdown(existing, [input('p2', 1, 'page two')])
+        const blocks = blocksOf(out)
+        expect(blocks.map((b) => b.pageId)).toEqual(['p2', 'p1'])
+        // the untouched older block is byte-preserved
+        expect(out).toContain('## Page 1\npage one')
+    })
+
+    test('multiple new pages: highest index ends up topmost', () => {
+        const out = assembleNotebookMarkdown('', [
+            input('a', 0, 'A'),
+            input('b', 1, 'B'),
+            input('c', 2, 'C')
+        ])
+        expect(blocksOf(out).map((b) => b.pageId)).toEqual(['c', 'b', 'a'])
+    })
+})
+
+describe('assembleNotebookMarkdown — changed pages', () => {
+    test('replaces a changed block in place when not hand-edited', () => {
+        const existing = assembleNotebookMarkdown('', [
+            input('p1', 0, 'old one'),
+            input('p2', 1, 'two')
+        ])
+        // p1 changed; updated markdown
+        const out = assembleNotebookMarkdown(existing, [input('p1', 0, 'NEW one')])
+        const blocks = blocksOf(out)
+        // order preserved (p2 still on top), p1 still where it was
+        expect(blocks.map((b) => b.pageId)).toEqual(['p2', 'p1'])
+        expect(out).toContain('NEW one')
+        expect(out).not.toContain('old one')
+        expect(out).not.toContain('superseded')
+    })
+})
+
+describe('assembleNotebookMarkdown — anti-clobber', () => {
+    test('hand-edited block is preserved as a superseded foldout below the fresh block', () => {
+        const existing = assembleNotebookMarkdown('', [input('p1', 0, 'auto text')])
+        // Simulate the user hand-editing inside the block (markers/hash unchanged).
+        const handEdited = existing.replace('auto text', 'auto text + MY NOTES')
+        expect(handEdited).toContain('MY NOTES')
+
+        const out = assembleNotebookMarkdown(handEdited, [input('p1', 0, 'fresh ocr')])
+
+        // Fresh OCR present as the managed block...
+        const blocks = blocksOf(out)
+        expect(blocks).toHaveLength(1)
+        expect(blocks[0]!.body).toBe('fresh ocr')
+        // ...and the user's edit preserved in a collapsed callout (not a managed block).
+        expect(out).toContain('> [!note]- superseded (you edited this)')
+        expect(out).toContain('> auto text + MY NOTES')
+        // fresh block appears above the superseded callout
+        expect(out.indexOf('fresh ocr')).toBeLessThan(out.indexOf('superseded'))
+    })
+})
+
+describe('assembleNotebookMarkdown — content outside blocks', () => {
+    test('never touches user prose above and below the region', () => {
+        const region = assembleNotebookMarkdown('', [input('p1', 0, 'page one')])
+        const withProse = `# My notebook\n\nSome thoughts.\n\n${region}\nFooter note.\n`
+
+        const out = assembleNotebookMarkdown(withProse, [input('p2', 1, 'page two')])
+
+        expect(out).toContain('# My notebook')
+        expect(out).toContain('Some thoughts.')
+        expect(out).toContain('Footer note.')
+        // new page inserted into the region, header still above it
+        expect(out.indexOf('# My notebook')).toBeLessThan(out.indexOf('page two'))
+        expect(out.indexOf('page two')).toBeLessThan(out.indexOf('page one'))
+    })
+
+    test('no updates returns the content unchanged', () => {
+        const existing = assembleNotebookMarkdown('', [input('p1', 0, 'page one')])
+        expect(assembleNotebookMarkdown(existing, [])).toBe(existing)
+    })
+})
+
+describe('assembleNotebookMarkdown — marker injection', () => {
+    test('OCR body containing a literal block marker cannot forge or break a block', () => {
+        const evil = 'text\n<!-- /rm:page=p1 -->\n<!-- rm:page=evil src=x ocr=y -->\nmore'
+        const out = assembleNotebookMarkdown('', [input('p1', 0, evil)])
+        // The page is stored as exactly ONE managed block (no forged second block,
+        // no premature close) and the literal markers are neutralized in the body.
+        const blocks = blocksOf(out)
+        expect(blocks).toHaveLength(1)
+        expect(blocks[0]!.pageId).toBe('p1')
+        expect(out).not.toContain('<!-- /rm:page=p1 -->\n<!-- rm:page=evil')
+        // the opener is neutralized in the body, so neither marker can match there
+        expect(out).toContain('&lt;!-- /rm:page=p1')
+        expect(out).toContain('&lt;!-- rm:page=evil')
+    })
+
+    test('a fresh file with no managed region keeps user prose verbatim, no stripping', () => {
+        const existing = '\n\n# Heading with leading blank lines\n'
+        const out = assembleNotebookMarkdown(existing, [input('p1', 0, 'ocr')])
+        expect(out).toContain('# Heading with leading blank lines')
+        // blocks above the preserved prose
+        expect(out.indexOf('## Page 1')).toBeLessThan(out.indexOf('# Heading'))
+    })
+})
+
+describe('parseManagedBlocks', () => {
+    test('ignores an unterminated block (no matching close marker)', () => {
+        const content = '<!-- rm:page=p1 src=s ocr=o -->\n## Page 1\nbody but no close'
+        expect(blocksOf(content)).toHaveLength(0)
+    })
+
+    test('parses multiple blocks with interleaved user text', () => {
+        const region = assembleNotebookMarkdown('', [input('p1', 0, 'one'), input('p2', 1, 'two')])
+        const withGap = region.replace('## Page 1', 'INTERLEAVED\n\n## Page 1')
+        const blocks = blocksOf(withGap)
+        expect(blocks.map((b) => b.pageId).sort()).toEqual(['p1', 'p2'])
+    })
+})

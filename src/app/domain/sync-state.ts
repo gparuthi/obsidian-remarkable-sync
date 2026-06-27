@@ -1,4 +1,17 @@
 /**
+ * OCR state tracked per page within a notebook. Lets a later sync skip pages
+ * whose rendered source image has not changed (so we never re-OCR — and never
+ * re-call the OCR endpoint for — unchanged pages).
+ */
+export interface PageOcrState {
+    readonly pageId: string
+    /** Hash of the rendered page image bytes that were OCR'd. */
+    readonly srcHash: string
+    /** Hash of the OCR markdown produced for that image. */
+    readonly ocrHash: string
+}
+
+/**
  * Sync state tracked per notebook
  */
 export interface NotebookSyncState {
@@ -6,6 +19,11 @@ export interface NotebookSyncState {
     readonly lastSyncedAt: number // epoch ms, 0 = never synced
     readonly lastModifiedCloud: number // epoch ms from cloud
     readonly syncedPageCount: number
+    /**
+     * Per-page OCR state keyed by pageId. Optional/absent for notebooks synced
+     * before OCR existed, or when OCR is disabled (backward compatible).
+     */
+    readonly pages?: Record<string, PageOcrState>
 }
 
 /**
