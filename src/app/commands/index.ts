@@ -4,6 +4,7 @@ import { connectDevice } from './connect-device'
 import { disconnectDevice } from './disconnect-device'
 import { listNotebooks } from './list-notebooks'
 import { syncNotebook } from './sync-notebook'
+import { syncAllNotebooks } from './sync-all-notebooks'
 import { importRmdoc } from './import-rmdoc'
 
 export function registerCommands(plugin: RemarkableSyncPlugin): void {
@@ -40,6 +41,14 @@ export function registerCommands(plugin: RemarkableSyncPlugin): void {
         name: 'Sync a notebook',
         callback: () => {
             void syncNotebook(plugin)
+        }
+    })
+
+    plugin.addCommand({
+        id: 'sync-all-notebooks',
+        name: 'Sync all notebooks',
+        callback: () => {
+            void syncAllNotebooks(plugin)
         }
     })
 

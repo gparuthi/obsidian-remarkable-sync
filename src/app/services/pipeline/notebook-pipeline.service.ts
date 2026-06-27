@@ -64,6 +64,11 @@ export function createNotebookPipelineService(
             if (contentPages.length === 0) {
                 new Notice(`${notebook.visibleName}: No pages with content found`)
                 onProgress({ status: 'done', currentPage: 0, totalPages: 0 })
+                // Record sync state for blank notebooks too, so an unattended
+                // all-notebooks sync skips this (unchanged) notebook on the next
+                // tick instead of re-downloading it every interval.
+                const lastModifiedCloud = parseInt(notebook.lastModified, 10) || Date.now()
+                await plugin.syncStoreService.updateState(notebook.id, lastModifiedCloud, 0)
                 return true
             }
 

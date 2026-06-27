@@ -1,5 +1,5 @@
 import { test, expect, describe } from 'bun:test'
-import { deriveSyncStatus, DEFAULT_SYNC_STORE } from './sync-state'
+import { deriveSyncStatus, notebookNeedsSync, DEFAULT_SYNC_STORE } from './sync-state'
 import type { NotebookSyncState } from './sync-state'
 
 describe('deriveSyncStatus', () => {
@@ -51,5 +51,61 @@ describe('deriveSyncStatus', () => {
 describe('DEFAULT_SYNC_STORE', () => {
     test('has empty notebooks record', () => {
         expect(DEFAULT_SYNC_STORE.notebooks).toEqual({})
+    })
+})
+
+describe('notebookNeedsSync', () => {
+    test('syncs when state is undefined (never synced)', () => {
+        expect(notebookNeedsSync('1000', undefined)).toBe(true)
+    })
+
+    test('syncs when lastSyncedAt is 0 (never synced)', () => {
+        const state: NotebookSyncState = {
+            remarkableId: 'id',
+            lastSyncedAt: 0,
+            lastModifiedCloud: 1000,
+            syncedPageCount: 0
+        }
+        expect(notebookNeedsSync('1000', state)).toBe(true)
+    })
+
+    test('skips when cloud mtime has not advanced past last synced', () => {
+        const state: NotebookSyncState = {
+            remarkableId: 'id',
+            lastSyncedAt: 5000,
+            lastModifiedCloud: 1000,
+            syncedPageCount: 3
+        }
+        expect(notebookNeedsSync('1000', state)).toBe(false)
+    })
+
+    test('syncs when cloud mtime is newer than last synced', () => {
+        const state: NotebookSyncState = {
+            remarkableId: 'id',
+            lastSyncedAt: 5000,
+            lastModifiedCloud: 1000,
+            syncedPageCount: 3
+        }
+        expect(notebookNeedsSync('2000', state)).toBe(true)
+    })
+
+    test('syncs when cloud mtime is unparseable', () => {
+        const state: NotebookSyncState = {
+            remarkableId: 'id',
+            lastSyncedAt: 5000,
+            lastModifiedCloud: 1000,
+            syncedPageCount: 3
+        }
+        expect(notebookNeedsSync('not-a-number', state)).toBe(true)
+    })
+
+    test('syncs when cloud mtime parses to 0', () => {
+        const state: NotebookSyncState = {
+            remarkableId: 'id',
+            lastSyncedAt: 5000,
+            lastModifiedCloud: 1000,
+            syncedPageCount: 3
+        }
+        expect(notebookNeedsSync('0', state)).toBe(true)
     })
 })
