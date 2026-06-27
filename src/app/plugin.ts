@@ -180,6 +180,12 @@ export class RemarkableSyncPlugin extends Plugin {
             if (loadedSettings.autoSyncNewestOnly !== undefined) {
                 draft.autoSyncNewestOnly = loadedSettings.autoSyncNewestOnly
             }
+            if (loadedSettings.ocrEnabled !== undefined) {
+                draft.ocrEnabled = loadedSettings.ocrEnabled
+            }
+            if (loadedSettings.mdserverOcrUrl !== undefined) {
+                draft.mdserverOcrUrl = loadedSettings.mdserverOcrUrl
+            }
             if (loadedSettings.syncStore !== undefined) {
                 draft.syncStore = loadedSettings.syncStore
             }

@@ -9,14 +9,32 @@ All settings are accessible via **Settings → Community plugins → Remarkable 
 
 ## Settings
 
-| Setting         | Type     | Default | Description                                                                      |
-| --------------- | -------- | ------- | -------------------------------------------------------------------------------- |
-| Target folder   | text     | `""`    | Vault-relative path where output files are saved. Leave empty for vault root.    |
-| Save images     | toggle   | `true`  | Save rendered page images                                                        |
-| Image format    | dropdown | `jpeg`  | Format for rendered images: JPEG, WebP, or PNG                                   |
-| Image quality   | slider   | `0.85`  | Quality for JPEG/WebP (0.1 = smallest, 1.0 = best). Hidden when PNG is selected. |
-| Use rmfakecloud | toggle   | `false` | Connect to a self-hosted rmfakecloud server instead of the official cloud        |
-| Server URL      | text     | `""`    | Base URL of your rmfakecloud server (only shown when rmfakecloud is enabled)     |
+| Setting                      | Type     | Default                     | Description                                                                                     |
+| ---------------------------- | -------- | --------------------------- | ----------------------------------------------------------------------------------------------- |
+| Target folder                | text     | `""`                        | Vault-relative path where output files are saved. Leave empty for vault root.                   |
+| Save images                  | toggle   | `true`                      | Save rendered page images                                                                       |
+| Image format                 | dropdown | `jpeg`                      | Format for rendered images: JPEG, WebP, or PNG                                                  |
+| Image quality                | slider   | `0.85`                      | Quality for JPEG/WebP (0.1 = smallest, 1.0 = best). Hidden when PNG is selected.                |
+| Use rmfakecloud              | toggle   | `false`                     | Connect to a self-hosted rmfakecloud server instead of the official cloud                       |
+| Server URL                   | text     | `""`                        | Base URL of your rmfakecloud server (only shown when rmfakecloud is enabled)                    |
+| Transcribe pages to markdown | toggle   | `false`                     | OCR each new/changed synced page via a local server and assemble one markdown note per notebook |
+| OCR server URL               | text     | `http://localhost:1250/ocr` | Local endpoint each page image is posted to (only used when transcription is enabled)           |
+
+## OCR transcription
+
+Enable **Transcribe pages to markdown** to turn synced page images into text. After a
+sync, each new or changed page image is posted to the configured local OCR server,
+which returns markdown. The plugin writes one note per notebook
+(`{targetFolder}/{NotebookName}.md`) with the **newest page at the top**.
+
+- Each page is wrapped in a managed `<!-- rm:page=… -->` block. Text you write
+  **outside** those blocks is never modified.
+- If you hand-edit inside a managed block, your edit is preserved: the next sync
+  inserts the fresh transcription above it and moves your version into a collapsed
+  `> [!note]- superseded` callout instead of overwriting it.
+- Unchanged pages are skipped, so the OCR server is not called again for them.
+- Only the page image is sent, and only to the URL you configure. The plugin holds
+  no OCR/API keys — those stay on the local server.
 
 ## Image Formats
 

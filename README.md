@@ -63,13 +63,27 @@ If the plugin isn't listed in the community catalog yet (or you want a specific 
 
 ## Settings
 
-| Setting         | Default     | Description                                                            |
-| --------------- | ----------- | ---------------------------------------------------------------------- |
-| Target folder   | `""` (root) | Vault folder for output files                                          |
-| Save images     | `true`      | Save rendered page images                                              |
-| Image format    | `png`       | PNG or JPEG                                                            |
-| Use rmfakecloud | `false`     | Connect to a self-hosted rmfakecloud server instead of official cloud  |
-| Server URL      | `""`        | Base URL of your rmfakecloud server (only when rmfakecloud is enabled) |
+| Setting                      | Default                     | Description                                                                                                                  |
+| ---------------------------- | --------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| Target folder                | `""` (root)                 | Vault folder for output files                                                                                                |
+| Save images                  | `true`                      | Save rendered page images                                                                                                    |
+| Image format                 | `png`                       | PNG or JPEG                                                                                                                  |
+| Use rmfakecloud              | `false`                     | Connect to a self-hosted rmfakecloud server instead of official cloud                                                        |
+| Server URL                   | `""`                        | Base URL of your rmfakecloud server (only when rmfakecloud is enabled)                                                       |
+| Transcribe pages to markdown | `false`                     | Send each new/changed synced page to a **local** OCR server and assemble one markdown note per notebook (newest page on top) |
+| OCR server URL               | `http://localhost:1250/ocr` | Endpoint the page image is posted to (only when transcription is enabled)                                                    |
+
+### OCR transcription
+
+When **Transcribe pages to markdown** is enabled, each new or changed synced page
+image is posted to the local OCR server (default `http://localhost:1250/ocr`),
+which returns markdown. The plugin assembles one note per notebook
+(`{targetFolder}/{NotebookName}.md`) with the newest page at the top. Each page is
+wrapped in a managed `<!-- rm:page=… -->` block; anything you write outside those
+blocks is never touched. If you hand-edit inside a block, your edit is preserved (it
+is moved into a collapsed "superseded" callout) rather than overwritten. Unchanged
+pages are not re-sent, so no needless OCR calls are made. Only the page image is
+sent, and only to the URL you configure — no other network destination.
 
 ## Output Format
 
@@ -97,7 +111,7 @@ The authentication flow and sync protocol are identical to the official cloud. A
 
 - Authentication tokens are stored at `~/.remarkable-sync/token.json`, deliberately **outside the vault**. This keeps long-lived reMarkable credentials out of any vault sync/sharing (e.g. Obsidian Sync, Git, cloud folders) so they are never accidentally distributed alongside notes. This is the only file the plugin reads or writes outside the vault, and is why the plugin is desktop-only.
 - No telemetry or third-party analytics
-- Network requests only to reMarkable cloud (or your rmfakecloud server when enabled)
+- Network requests only to reMarkable cloud (or your rmfakecloud server when enabled), plus — only when **Transcribe pages to markdown** is enabled — the local OCR server URL you configure
 
 ## Development
 
