@@ -1,6 +1,8 @@
 import type { SyncStore } from '../domain/sync-state'
 import { DEFAULT_SYNC_STORE } from '../domain/sync-state'
 
+export const MIN_AUTO_SYNC_INTERVAL_MINUTES = 5
+
 export interface PluginSettings {
     targetFolder: string
     saveImages: boolean
@@ -8,6 +10,9 @@ export interface PluginSettings {
     imageQuality: number
     useRmfakecloud: boolean
     rmfakecloudUrl: string
+    syncOnStartup: boolean
+    autoSync: boolean
+    autoSyncIntervalMinutes: number
     syncStore: SyncStore
 }
 
@@ -18,5 +23,8 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     imageQuality: 0.85,
     useRmfakecloud: false,
     rmfakecloudUrl: '',
+    syncOnStartup: false,
+    autoSync: false,
+    autoSyncIntervalMinutes: 15,
     syncStore: DEFAULT_SYNC_STORE
 }

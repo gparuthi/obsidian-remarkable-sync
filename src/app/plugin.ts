@@ -1,11 +1,12 @@
 import { Plugin } from 'obsidian'
-import { DEFAULT_SETTINGS } from './types/plugin-settings.intf'
+import { DEFAULT_SETTINGS, MIN_AUTO_SYNC_INTERVAL_MINUTES } from './types/plugin-settings.intf'
 import type { PluginSettings } from './types/plugin-settings.intf'
 import { RemarkableSyncSettingTab } from './settings/settings-tab'
 import { log } from '../utils/log'
 import { produce } from 'immer'
 import type { Draft, WritableDraft } from 'immer'
 import { registerCommands } from './commands'
+import { syncAllNotebooks } from './commands/sync-all-notebooks'
 import { REMARKABLE_PANEL_VIEW_TYPE, RemarkablePanelView } from './ui/remarkable-panel-view'
 import type { RemarkableAuthService } from './services/auth/remarkable-auth.service'
 import { createRemarkableAuthService } from './services/auth/remarkable-auth.service'
@@ -21,6 +22,8 @@ import { createRmdocImportService } from './services/import/rmdoc-import.service
 export class RemarkableSyncPlugin extends Plugin {
     settings: PluginSettings = { ...DEFAULT_SETTINGS }
     isConnected = false
+    isSyncing = false
+    private autoSyncIntervalId: number | null = null
     authService!: RemarkableAuthService
     cloudService!: RemarkableCloudService
     pipelineService!: NotebookPipelineService
@@ -53,10 +56,58 @@ export class RemarkableSyncPlugin extends Plugin {
 
         // Add a settings screen for the plugin
         this.addSettingTab(new RemarkableSyncSettingTab(this.app, this))
+
+        // Defer auto-sync wiring until the workspace is ready so we never do
+        // heavy work during onload.
+        this.app.workspace.onLayoutReady(() => {
+            if (this.settings.syncOnStartup) {
+                void syncAllNotebooks(this, { silent: true }).catch((error: unknown) => {
+                    log('Startup sync failed', 'error', error)
+                })
+            }
+            this.setupAutoSync()
+        })
     }
 
     override onunload(): void {
         log('Unloading', 'debug')
+        if (this.autoSyncIntervalId !== null) {
+            window.clearInterval(this.autoSyncIntervalId)
+            this.autoSyncIntervalId = null
+        }
+    }
+
+    /**
+     * (Re)configure the periodic auto-sync timer from current settings. Safe to
+     * call repeatedly — clears any existing interval first, so toggling the
+     * setting or changing the interval takes effect immediately without stacking
+     * timers. The interval is also registered for cleanup on unload.
+     */
+    setupAutoSync(): void {
+        if (this.autoSyncIntervalId !== null) {
+            window.clearInterval(this.autoSyncIntervalId)
+            this.autoSyncIntervalId = null
+        }
+
+        if (!this.settings.autoSync) {
+            return
+        }
+
+        const minutes = Math.max(
+            MIN_AUTO_SYNC_INTERVAL_MINUTES,
+            this.settings.autoSyncIntervalMinutes
+        )
+        const intervalId = window.setInterval(
+            () => {
+                void syncAllNotebooks(this, { silent: true }).catch((error: unknown) => {
+                    log('Auto-sync failed', 'error', error)
+                })
+            },
+            minutes * 60 * 1000
+        )
+        this.registerInterval(intervalId)
+        this.autoSyncIntervalId = intervalId
+        log(`Auto-sync scheduled every ${minutes} minutes`, 'debug')
     }
 
     async activatePanelView(): Promise<void> {
@@ -101,6 +152,15 @@ export class RemarkableSyncPlugin extends Plugin {
             }
             if (loadedSettings.rmfakecloudUrl !== undefined) {
                 draft.rmfakecloudUrl = loadedSettings.rmfakecloudUrl
+            }
+            if (loadedSettings.syncOnStartup !== undefined) {
+                draft.syncOnStartup = loadedSettings.syncOnStartup
+            }
+            if (loadedSettings.autoSync !== undefined) {
+                draft.autoSync = loadedSettings.autoSync
+            }
+            if (loadedSettings.autoSyncIntervalMinutes !== undefined) {
+                draft.autoSyncIntervalMinutes = loadedSettings.autoSyncIntervalMinutes
             }
             if (loadedSettings.syncStore !== undefined) {
                 draft.syncStore = loadedSettings.syncStore
