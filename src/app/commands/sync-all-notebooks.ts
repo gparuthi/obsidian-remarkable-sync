@@ -1,6 +1,7 @@
 import { Notice } from 'obsidian'
 import type { RemarkableSyncPlugin } from '../plugin'
 import { notebookNeedsSync } from '../domain/sync-state'
+import { notebooksInFolder, newestNotebook } from '../domain/notebook'
 import { log } from '../../utils/log'
 
 export interface SyncAllResult {
@@ -10,10 +11,26 @@ export interface SyncAllResult {
     failed: number
 }
 
+export interface SyncAllOptions {
+    /** Suppress this routine's own start/no-op notices (for unattended runs). */
+    silent?: boolean
+    /**
+     * Restrict to notebooks within this cloud folder (recursive). Empty/undefined
+     * = all folders. Used to scope auto-sync to e.g. `/2026`.
+     */
+    folder?: string
+    /**
+     * Sync only the single most-recently-modified notebook in scope (after the
+     * folder filter). Still skipped if unchanged.
+     */
+    newestOnly?: boolean
+}
+
 /**
- * Sync every notebook from the reMarkable cloud, reusing the existing
- * per-notebook pipeline. Unchanged notebooks (cloud mtime not advanced past the
- * last sync) are skipped so we do not re-render everything.
+ * Sync notebooks from the reMarkable cloud, reusing the existing per-notebook
+ * pipeline. Optionally scoped to a `folder` and/or to the single `newestOnly`
+ * notebook. Unchanged notebooks (cloud mtime not advanced past the last sync)
+ * are skipped so we do not re-render anything that has not changed.
  *
  * Fail-soft: a single bad notebook (download/parse/render error) is logged and
  * counted, never thrown — one failure must not abort the run, crash Obsidian, or
@@ -23,7 +40,7 @@ export interface SyncAllResult {
  */
 export async function syncAllNotebooks(
     plugin: RemarkableSyncPlugin,
-    options: { silent?: boolean } = {}
+    options: SyncAllOptions = {}
 ): Promise<SyncAllResult> {
     const result: SyncAllResult = { total: 0, synced: 0, skipped: 0, failed: 0 }
     const silent = options.silent === true
@@ -58,7 +75,6 @@ export async function syncAllNotebooks(
             return result
         }
 
-        result.total = notebooks.length
         if (notebooks.length === 0) {
             if (!silent) {
                 new Notice('No notebooks found')
@@ -66,11 +82,33 @@ export async function syncAllNotebooks(
             return result
         }
 
-        if (!silent) {
-            new Notice(`Syncing ${notebooks.length} notebooks...`)
+        // Scope: restrict to the source folder, then optionally to the single
+        // newest-modified notebook. This is what keeps auto-sync from touching
+        // other folders (e.g. /Books) or re-rendering everything.
+        let candidates =
+            options.folder !== undefined ? notebooksInFolder(notebooks, options.folder) : notebooks
+        if (options.newestOnly) {
+            const newest = newestNotebook(candidates)
+            candidates = newest ? [newest] : []
         }
 
-        for (const notebook of notebooks) {
+        result.total = candidates.length
+        if (candidates.length === 0) {
+            if (!silent) {
+                const where = options.folder ? ` in "${options.folder}"` : ''
+                new Notice(`No notebooks to sync${where}`)
+            }
+            return result
+        }
+
+        if (!silent) {
+            const label = options.newestOnly
+                ? `Syncing newest notebook (${candidates[0]!.visibleName})...`
+                : `Syncing ${candidates.length} notebooks...`
+            new Notice(label)
+        }
+
+        for (const notebook of candidates) {
             const state = plugin.syncStoreService.getState(notebook.id)
             if (!notebookNeedsSync(notebook.lastModified, state)) {
                 result.skipped++

@@ -53,6 +53,17 @@ export function registerCommands(plugin: RemarkableSyncPlugin): void {
     })
 
     plugin.addCommand({
+        id: 'sync-newest-notebook',
+        name: 'Sync newest notebook in source folder',
+        callback: () => {
+            void syncAllNotebooks(plugin, {
+                folder: plugin.settings.sourceFolder,
+                newestOnly: true
+            })
+        }
+    })
+
+    plugin.addCommand({
         id: 'remarkable-import-rmdoc',
         name: 'Import .rmdoc file',
         callback: () => {

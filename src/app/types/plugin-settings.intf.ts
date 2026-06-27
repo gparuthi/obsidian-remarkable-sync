@@ -13,6 +13,8 @@ export interface PluginSettings {
     syncOnStartup: boolean
     autoSync: boolean
     autoSyncIntervalMinutes: number
+    sourceFolder: string
+    autoSyncNewestOnly: boolean
     syncStore: SyncStore
 }
 
@@ -26,5 +28,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     syncOnStartup: false,
     autoSync: false,
     autoSyncIntervalMinutes: 15,
+    sourceFolder: '/2026',
+    autoSyncNewestOnly: true,
     syncStore: DEFAULT_SYNC_STORE
 }

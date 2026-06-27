@@ -94,3 +94,49 @@ export interface NotebookSummary {
 export function notebookDisplayPath(nb: NotebookSummary): string {
     return nb.folderPath ? `${nb.folderPath}/${nb.visibleName}` : nb.visibleName
 }
+
+/**
+ * Normalize a user-entered cloud folder path for comparison against a
+ * notebook's `folderPath` (which has no leading/trailing slash, e.g. "2026" or
+ * "2026/Sub"). Strips surrounding slashes and whitespace. Returns '' for
+ * root/all.
+ */
+export function normalizeFolder(folder: string): string {
+    return folder.trim().replace(/^\/+/, '').replace(/\/+$/, '')
+}
+
+/**
+ * Filter notebooks to those within `folder` (recursive — includes notebooks in
+ * sub-folders of it). An empty/whitespace/root folder returns all notebooks.
+ * Matching is exact on `folderPath` segments, so "2026" does not match "2026x".
+ */
+export function notebooksInFolder(
+    notebooks: readonly NotebookSummary[],
+    folder: string
+): NotebookSummary[] {
+    const norm = normalizeFolder(folder)
+    if (norm === '') {
+        return [...notebooks]
+    }
+    const prefix = `${norm}/`
+    return notebooks.filter((nb) => nb.folderPath === norm || nb.folderPath.startsWith(prefix))
+}
+
+/**
+ * Pick the single most-recently-modified notebook (by cloud `lastModified`,
+ * epoch ms as a string). Unparseable mtimes are treated as 0. Returns undefined
+ * for an empty list.
+ */
+export function newestNotebook(notebooks: readonly NotebookSummary[]): NotebookSummary | undefined {
+    let best: NotebookSummary | undefined
+    let bestMod = -Infinity
+    for (const nb of notebooks) {
+        const parsed = parseInt(nb.lastModified, 10)
+        const mod = Number.isFinite(parsed) ? parsed : 0
+        if (best === undefined || mod > bestMod) {
+            best = nb
+            bestMod = mod
+        }
+    }
+    return best
+}
