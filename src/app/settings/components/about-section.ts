@@ -1,37 +1,20 @@
 import { Setting } from 'obsidian'
-import { BUY_ME_A_COFFEE_BADGE_DATA_URL } from '../../assets/buy-me-a-coffee'
 
+/**
+ * About section for the settings tab.
+ *
+ * This is a hardened, self-built fork of the upstream "Remarkable Synchronizer"
+ * plugin by Sébastien Dubois (MIT). The original funding/social nags and their
+ * external links (x.com, buymeacoffee.com) have been removed. The plugin makes
+ * no network calls other than to the reMarkable cloud (or a user-configured
+ * rmfakecloud server) and ships no telemetry.
+ */
 export function renderAboutSection(containerEl: HTMLElement): void {
     new Setting(containerEl).setName('About').setHeading()
 
     new Setting(containerEl)
-        .setName('Follow me on X')
-        .setDesc('Sébastien Dubois (@dSebastien)')
-        .addButton((button) => {
-            button.setCta()
-            button.setButtonText('Follow me on X').onClick(() => {
-                window.open('https://x.com/dSebastien')
-            })
-        })
-
-    new Setting(containerEl).setName('Support').setHeading()
-
-    const supportDesc = new DocumentFragment()
-    supportDesc.createDiv({
-        text: 'Buy me a coffee to support the development of this plugin'
-    })
-
-    new Setting(containerEl).setDesc(supportDesc)
-
-    const badgeContainer = containerEl.createDiv()
-    const linkEl = badgeContainer.createEl('a', {
-        href: 'https://www.buymeacoffee.com/dsebastien'
-    })
-    const imgEl = linkEl.createEl('img')
-    imgEl.src = BUY_ME_A_COFFEE_BADGE_DATA_URL
-    imgEl.alt = 'Buy me a coffee'
-    imgEl.width = 175
-
-    const spacing = containerEl.createDiv()
-    spacing.classList.add('support-header-margin')
+        .setName('Hardened fork')
+        .setDesc(
+            'Self-built, dependency-pinned fork of the open-source "Remarkable Synchronizer" plugin by Sébastien Dubois (MIT). No telemetry; connects only to the reMarkable cloud or your configured rmfakecloud server.'
+        )
 }

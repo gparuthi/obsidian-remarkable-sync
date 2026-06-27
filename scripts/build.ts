@@ -132,13 +132,19 @@ async function buildJs(): Promise<void> {
 
 async function copyAssets(): Promise<void> {
     console.log('Copying assets...')
-    const glob = new Glob('**/*')
 
-    for await (const file of glob.scan({ cwd: ASSETS_SRC, onlyFiles: true })) {
-        const src = join(ASSETS_SRC, file)
-        const dest = join(DIST, file)
-        await Bun.write(dest, Bun.file(src))
-        console.log(`  ✓ ${file}`)
+    // The assets dir is optional — the hardened fork ships no static assets
+    // (the buy-me-a-coffee badge was removed). Guard the scan so an absent or
+    // empty dir doesn't fail the build.
+    if (existsSync(ASSETS_SRC)) {
+        const glob = new Glob('**/*')
+
+        for await (const file of glob.scan({ cwd: ASSETS_SRC, onlyFiles: true })) {
+            const src = join(ASSETS_SRC, file)
+            const dest = join(DIST, file)
+            await Bun.write(dest, Bun.file(src))
+            console.log(`  ✓ ${file}`)
+        }
     }
 
     // Also copy manifest.json and versions.json to dist
