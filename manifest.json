@@ -5,6 +5,6 @@
     "version": "9.7.0",
     "minAppVersion": "1.7.2",
     "isDesktopOnly": true,
-    "author": "Sébastien Dubois (hardened fork)",
+    "author": "Gaurav Paruthi",
     "authorUrl": "https://github.com/gparuthi/obsidian-remarkable-sync"
 }
