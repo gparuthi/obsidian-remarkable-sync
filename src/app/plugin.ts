@@ -8,6 +8,7 @@ import type { Draft, WritableDraft } from 'immer'
 import { registerCommands } from './commands'
 import { syncAllNotebooks } from './commands/sync-all-notebooks'
 import { REMARKABLE_PANEL_VIEW_TYPE, RemarkablePanelView } from './ui/remarkable-panel-view'
+import { SYNC_LOG_VIEW_TYPE, SyncLogView } from './ui/sync-log-view'
 import type { RemarkableAuthService } from './services/auth/remarkable-auth.service'
 import { createRemarkableAuthService } from './services/auth/remarkable-auth.service'
 import type { RemarkableCloudService } from './services/cloud/remarkable-cloud.service'
@@ -18,6 +19,8 @@ import type { SyncStoreService } from './services/sync/sync-store.service'
 import { createSyncStoreService } from './services/sync/sync-store.service'
 import type { RmdocImportService } from './services/import/rmdoc-import.service'
 import { createRmdocImportService } from './services/import/rmdoc-import.service'
+import type { SyncLogService } from './services/log/sync-log.service'
+import { createSyncLogService } from './services/log/sync-log.service'
 
 export class RemarkableSyncPlugin extends Plugin {
     settings: PluginSettings = { ...DEFAULT_SETTINGS }
@@ -29,11 +32,13 @@ export class RemarkableSyncPlugin extends Plugin {
     pipelineService!: NotebookPipelineService
     syncStoreService!: SyncStoreService
     importService!: RmdocImportService
+    syncLogService!: SyncLogService
 
     override async onload(): Promise<void> {
         log('Initializing', 'debug')
         await this.loadSettings()
 
+        this.syncLogService = createSyncLogService()
         this.authService = createRemarkableAuthService(this)
         this.cloudService = createRemarkableCloudService(this)
         this.syncStoreService = createSyncStoreService(this)
@@ -45,6 +50,8 @@ export class RemarkableSyncPlugin extends Plugin {
 
         // Register the panel view
         this.registerView(REMARKABLE_PANEL_VIEW_TYPE, (leaf) => new RemarkablePanelView(leaf, this))
+        // Register the sync-log view
+        this.registerView(SYNC_LOG_VIEW_TYPE, (leaf) => new SyncLogView(leaf, this))
 
         // Register commands
         registerCommands(this)
@@ -61,7 +68,7 @@ export class RemarkableSyncPlugin extends Plugin {
         // heavy work during onload.
         this.app.workspace.onLayoutReady(() => {
             if (this.settings.syncOnStartup) {
-                this.runAutoSync()
+                this.runAutoSync('startup')
             }
             this.setupAutoSync()
         })
@@ -73,9 +80,10 @@ export class RemarkableSyncPlugin extends Plugin {
      * Fire-and-forget: errors are caught + logged so a failed sync never crashes
      * Obsidian or wedges the periodic loop.
      */
-    private runAutoSync(): void {
+    private runAutoSync(trigger: 'startup' | 'interval'): void {
         void syncAllNotebooks(this, {
             silent: true,
+            trigger,
             folder: this.settings.sourceFolder,
             newestOnly: this.settings.autoSyncNewestOnly
         }).catch((error: unknown) => {
@@ -113,7 +121,7 @@ export class RemarkableSyncPlugin extends Plugin {
         )
         const intervalId = window.setInterval(
             () => {
-                this.runAutoSync()
+                this.runAutoSync('interval')
             },
             minutes * 60 * 1000
         )
@@ -133,6 +141,23 @@ export class RemarkableSyncPlugin extends Plugin {
             leaf = rightLeaf
             await leaf.setViewState({
                 type: REMARKABLE_PANEL_VIEW_TYPE,
+                active: true
+            })
+        }
+        void workspace.revealLeaf(leaf)
+    }
+
+    async activateSyncLogView(): Promise<void> {
+        const { workspace } = this.app
+        let leaf = workspace.getLeavesOfType(SYNC_LOG_VIEW_TYPE)[0]
+        if (!leaf) {
+            const rightLeaf = workspace.getRightLeaf(false)
+            if (!rightLeaf) {
+                return
+            }
+            leaf = rightLeaf
+            await leaf.setViewState({
+                type: SYNC_LOG_VIEW_TYPE,
                 active: true
             })
         }

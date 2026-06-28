@@ -10,6 +10,7 @@ An Obsidian plugin that connects to the reMarkable cloud to list, download, and 
 - **Sidebar panel** — browse notebooks with foldable folder hierarchy, search, multi-select, and per-notebook download
 - **Folder hierarchy preservation** — reMarkable folder structure mirrored in vault
 - **Local .rmdoc import** — import .rmdoc files directly without cloud connection
+- **Sync log panel** — a live sidebar view of sync + OCR activity, with failures and their reason
 
 ## Requirements
 
@@ -54,12 +55,23 @@ If the plugin isn't listed in the community catalog yet (or you want a specific 
 
 ## Commands
 
-| Command                          | Description                               |
-| -------------------------------- | ----------------------------------------- |
-| Open reMarkable panel            | Opens the sidebar panel listing notebooks |
-| Connect to reMarkable cloud      | Opens the authentication modal            |
-| Disconnect from reMarkable cloud | Clears stored tokens                      |
-| Import .rmdoc file               | Import a local .rmdoc file as images      |
+| Command                          | Description                                         |
+| -------------------------------- | --------------------------------------------------- |
+| Open reMarkable panel            | Opens the sidebar panel listing notebooks           |
+| Open reMarkable sync log         | Opens the sidebar panel of live sync + OCR activity |
+| Connect to reMarkable cloud      | Opens the authentication modal                      |
+| Disconnect from reMarkable cloud | Clears stored tokens                                |
+| Import .rmdoc file               | Import a local .rmdoc file as images                |
+
+### Sync log
+
+The **reMarkable sync log** is a sidebar view (open it via the command above or the
+log button on the notebook panel) showing a live, chronological feed of sync and OCR
+activity — each run's trigger (startup / interval / manual), per-page OCR outcomes
+(✓ transcribed, ⊘ unchanged, ✗ failed **with the failure reason**, e.g. an HTTP 429
+rate-limit), and per-notebook summaries. It keeps the most recent ~200 events in
+memory (not persisted) and has a **Clear** button. Useful for seeing _why_ a sync
+stalled without digging through the developer console.
 
 ## Settings
 

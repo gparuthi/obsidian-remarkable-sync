@@ -436,3 +436,71 @@
     @apply flex justify-end gap-2 pt-4;
     border-top: 1px solid var(--background-modifier-border);
 }
+
+/* ========================================
+   SYNC LOG PANEL
+   ======================================== */
+
+.remarkable-synclog {
+    @apply flex flex-col gap-2 text-sm;
+}
+
+.remarkable-synclog-header {
+    @apply flex items-center justify-between gap-2 pb-2;
+    border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.remarkable-synclog-actions {
+    @apply flex items-center gap-2;
+}
+
+.remarkable-synclog-count {
+    @apply text-xs;
+    color: var(--text-muted);
+}
+
+.remarkable-synclog-empty {
+    @apply py-4 text-sm;
+    color: var(--text-muted);
+}
+
+.remarkable-synclog-list {
+    @apply flex flex-col;
+}
+
+.remarkable-synclog-row {
+    @apply flex items-baseline gap-2 py-1 px-1;
+    border-bottom: 1px solid var(--background-modifier-border-hover);
+    font-family: var(--font-monospace);
+}
+
+.remarkable-synclog-time {
+    @apply flex-shrink-0 text-xs;
+    color: var(--text-faint);
+}
+
+.remarkable-synclog-marker {
+    @apply flex-shrink-0;
+}
+
+.remarkable-synclog-msg {
+    @apply break-words;
+    color: var(--text-normal);
+}
+
+.remarkable-synclog-success .remarkable-synclog-marker {
+    color: var(--text-success);
+}
+
+.remarkable-synclog-error .remarkable-synclog-marker,
+.remarkable-synclog-error .remarkable-synclog-msg {
+    color: var(--text-error);
+}
+
+.remarkable-synclog-skip .remarkable-synclog-marker {
+    color: var(--text-muted);
+}
+
+.remarkable-synclog-info .remarkable-synclog-marker {
+    color: var(--text-accent);
+}
