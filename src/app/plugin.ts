@@ -186,6 +186,9 @@ export class RemarkableSyncPlugin extends Plugin {
             if (loadedSettings.mdserverOcrUrl !== undefined) {
                 draft.mdserverOcrUrl = loadedSettings.mdserverOcrUrl
             }
+            if (loadedSettings.ocrRequestDelayMs !== undefined) {
+                draft.ocrRequestDelayMs = loadedSettings.ocrRequestDelayMs
+            }
             if (loadedSettings.syncStore !== undefined) {
                 draft.syncStore = loadedSettings.syncStore
             }
