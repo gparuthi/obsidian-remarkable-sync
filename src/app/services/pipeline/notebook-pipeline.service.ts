@@ -7,12 +7,17 @@ import { parseDocument } from '../parser/document-parser.service'
 import { renderPage } from '../renderer/page-renderer.service'
 import {
     buildNotebookMarkdownPath,
+    buildPagePath,
     readNotebookMarkdown,
     writeNotebookMarkdown,
     writePageImage
 } from '../output/markdown-writer.service'
 import { ocrPageImage } from '../ocr/ocr.service'
-import { assembleNotebookMarkdown, computeOcrHash } from '../../domain/ocr-markdown'
+import {
+    assembleNotebookMarkdown,
+    computeOcrHash,
+    rewriteImagePlaceholders
+} from '../../domain/ocr-markdown'
 import type { OcrPageInput } from '../../domain/ocr-markdown'
 import { hashBytes } from '../../../utils/hash'
 import { sleep } from '../../../utils/sleep'
@@ -167,7 +172,7 @@ export function createNotebookPipelineService(
                 madeOcrRequest = true
 
                 try {
-                    const markdown = await ocrPageImage(
+                    const rawMarkdown = await ocrPageImage(
                         settings.mdserverOcrUrl,
                         imageData,
                         settings.imageFormat,
@@ -183,6 +188,20 @@ export function createNotebookPipelineService(
                             }
                         }
                     )
+                    // Rewrite Mistral's broken img-N placeholders to embed THIS page's
+                    // real saved image (one embed per page), so the stored body + its
+                    // ocrHash never contain dead image refs. If images aren't being
+                    // saved, the placeholders are dropped instead of left dangling.
+                    const pageImagePath = settings.saveImages
+                        ? buildPagePath(
+                              settings.targetFolder,
+                              notebook.folderPath,
+                              notebook.visibleName,
+                              pageIndex,
+                              settings.imageFormat
+                          )
+                        : undefined
+                    const markdown = rewriteImagePlaceholders(rawMarkdown, pageImagePath)
                     const ocrHash = computeOcrHash(markdown)
                     nextPages[page.pageId] = { pageId: page.pageId, srcHash, ocrHash }
 

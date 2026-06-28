@@ -21,6 +21,10 @@ import type { RmdocImportService } from './services/import/rmdoc-import.service'
 import { createRmdocImportService } from './services/import/rmdoc-import.service'
 import type { SyncLogService } from './services/log/sync-log.service'
 import { createSyncLogService } from './services/log/sync-log.service'
+import {
+    cleanImagePlaceholders,
+    describeCleanResult
+} from './services/migration/clean-image-placeholders'
 
 export class RemarkableSyncPlugin extends Plugin {
     settings: PluginSettings = { ...DEFAULT_SETTINGS }
@@ -67,11 +71,36 @@ export class RemarkableSyncPlugin extends Plugin {
         // Defer auto-sync wiring until the workspace is ready so we never do
         // heavy work during onload.
         this.app.workspace.onLayoutReady(() => {
-            if (this.settings.syncOnStartup) {
-                this.runAutoSync('startup')
-            }
-            this.setupAutoSync()
+            void this.runStartupTasks()
         })
+    }
+
+    /**
+     * Deferred startup work (after the workspace is ready): run the one-time
+     * image-placeholder migration, then the optional startup sync, then arm the
+     * periodic auto-sync. Migration runs before the sync so the latter sees a
+     * clean, reconciled state.
+     */
+    private async runStartupTasks(): Promise<void> {
+        if (!this.settings.imgPlaceholderMigrationDone) {
+            try {
+                const result = await cleanImagePlaceholders(this)
+                if (result.blocksCleaned > 0) {
+                    this.syncLogService.emit('success', describeCleanResult(result))
+                }
+                // Only mark done on success, so a failed run retries on the next load.
+                await this.updateSettings((draft) => {
+                    draft.imgPlaceholderMigrationDone = true
+                })
+            } catch (error) {
+                log('Image-placeholder migration failed', 'error', error)
+            }
+        }
+
+        if (this.settings.syncOnStartup) {
+            this.runAutoSync('startup')
+        }
+        this.setupAutoSync()
     }
 
     /**
@@ -213,6 +242,9 @@ export class RemarkableSyncPlugin extends Plugin {
             }
             if (loadedSettings.ocrRequestDelayMs !== undefined) {
                 draft.ocrRequestDelayMs = loadedSettings.ocrRequestDelayMs
+            }
+            if (loadedSettings.imgPlaceholderMigrationDone !== undefined) {
+                draft.imgPlaceholderMigrationDone = loadedSettings.imgPlaceholderMigrationDone
             }
             if (loadedSettings.syncStore !== undefined) {
                 draft.syncStore = loadedSettings.syncStore

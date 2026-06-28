@@ -51,6 +51,132 @@ function closeMarker(pageId: string): string {
 }
 
 /**
+ * Mistral OCR emits markdown image links to local `img-N.<ext>` files (e.g.
+ * `![img-0.jpeg](img-0.jpeg)`) for figures/drawings it detects, but it guesses a
+ * wrong relative path — so Obsidian renders "img-0.jpeg could not be found". The
+ * real full-page image *is* saved (e.g. `<targetFolder>/2026/<nb>/<nb>-P020.jpeg`),
+ * so we rewrite each placeholder to embed that page's actual image instead.
+ *
+ * Match only that exact placeholder shape: BOTH the alt text and the link target
+ * are a bare `img-<n>.<ext>` filename (no path). A user-added link with a real
+ * target or custom alt (e.g. `![my figure](attachments/x.png)`) does NOT match and
+ * is preserved.
+ */
+const IMG_PLACEHOLDER_RE = /!\[img-\d+\.[A-Za-z0-9]+\]\(img-\d+\.[A-Za-z0-9]+\)/g
+
+/**
+ * Rewrite Mistral's broken `img-N` placeholders in one page's OCR markdown.
+ *
+ * - When `pageImagePath` is given (the page's saved image), all placeholders on the
+ *   page collapse into a SINGLE Obsidian embed `![[<pageImagePath>]]` (placed where
+ *   the first placeholder was); the rest are removed. One real image per page, never
+ *   duplicated.
+ * - When `pageImagePath` is undefined (no saved image), placeholders are simply
+ *   removed rather than left dangling.
+ *
+ * Transcribed text is preserved; a line that held only placeholder(s) is dropped (no
+ * stray blank line) unless it became the embed. Idempotent: markdown with no
+ * placeholders is returned unchanged.
+ */
+export function rewriteImagePlaceholders(
+    markdown: string,
+    pageImagePath: string | undefined
+): string {
+    // Fast path: the literal target prefix must be present to have anything to do.
+    if (!markdown.includes('](img-')) {
+        return markdown
+    }
+    const embed = pageImagePath ? `![[${pageImagePath}]]` : ''
+    let embedded = false
+    const out: string[] = []
+    for (const line of markdown.split('\n')) {
+        const newLine = line.replace(IMG_PLACEHOLDER_RE, () => {
+            if (embed && !embedded) {
+                embedded = true
+                return embed
+            }
+            return ''
+        })
+        if (line.trim() !== '' && newLine.trim() === '') {
+            // Line held only placeholder(s) and produced no embed → drop it.
+            continue
+        }
+        out.push(newLine)
+    }
+    return out.join('\n')
+}
+
+/** Parse the 1-based page number from a block label like "Page 20" → 20. */
+export function parsePageNumber(label: string): number | undefined {
+    const match = /^Page (\d+)$/.exec(label.trim())
+    return match ? parseInt(match[1]!, 10) : undefined
+}
+
+/** Resolve a page's saved image vault-path from its 1-based page number. */
+export type PageImageResolver = (pageNumber: number | undefined) => string | undefined
+
+/** A managed block whose body was rewritten during migration. */
+export interface CleanedBlock {
+    readonly pageId: string
+    /** Hash of the rewritten body — the block's new `ocr=` marker + syncStore value. */
+    readonly ocrHash: string
+}
+
+export interface CleanBlocksResult {
+    readonly content: string
+    readonly cleaned: readonly CleanedBlock[]
+}
+
+/**
+ * One-time migration helper: rewrite the `img-N` placeholders in every managed block
+ * of a notebook note (embedding each page's real image via `resolveImagePath`),
+ * re-rendering each changed block with a fresh `ocr=` marker that matches its new
+ * body. Returns the new content plus the (pageId, new ocrHash) of each changed block,
+ * so the caller can reconcile the stored per-page hash (no re-OCR).
+ *
+ * Idempotent: a note with no placeholders returns unchanged content + empty `cleaned`.
+ * Content outside managed blocks is untouched.
+ */
+export function migrateBlocksImagePlaceholders(
+    content: string,
+    resolveImagePath: PageImageResolver
+): CleanBlocksResult {
+    const blocks = parseManagedBlocks(content)
+    const edits: Array<{ start: number; end: number; text: string }> = []
+    const cleaned: CleanedBlock[] = []
+
+    for (const block of blocks) {
+        const imagePath = resolveImagePath(parsePageNumber(block.label))
+        const newBody = rewriteImagePlaceholders(block.body, imagePath)
+        if (newBody === block.body) {
+            continue
+        }
+        const ocrHash = computeOcrHash(newBody)
+        const replacement = renderBlock({
+            pageId: block.pageId,
+            pageIndex: 0, // unused by renderBlock
+            label: block.label,
+            markdown: newBody,
+            srcHash: block.srcHash,
+            ocrHash
+        })
+        edits.push({ start: block.openStart, end: block.closeEnd, text: replacement })
+        cleaned.push({ pageId: block.pageId, ocrHash })
+    }
+
+    if (edits.length === 0) {
+        return { content, cleaned: [] }
+    }
+
+    // Apply edits right-to-left so earlier offsets stay valid.
+    let result = content
+    for (const edit of [...edits].sort((a, b) => b.start - a.start)) {
+        result = result.slice(0, edit.start) + edit.text + result.slice(edit.end)
+    }
+    return { content: result, cleaned }
+}
+
+/**
  * Render one managed block. The `ocrHash` is taken from the input (computed once
  * by the caller via {@link computeOcrHash}); the body written is the normalized
  * markdown so it round-trips to the same hash.

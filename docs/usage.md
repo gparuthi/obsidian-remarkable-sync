@@ -33,15 +33,25 @@ Your device token is stored at `~/.remarkable-sync/token.json` and persists acro
 
 ## Commands
 
-| Command                          | Description                                  |
-| -------------------------------- | -------------------------------------------- |
-| Open reMarkable panel            | Opens the sidebar listing all notebooks      |
-| Open reMarkable sync log         | Opens the live sync + OCR activity log       |
-| Connect to reMarkable cloud      | Opens the authentication modal               |
-| Disconnect from reMarkable cloud | Clears stored tokens                         |
-| List notebooks                   | Fetches and lists notebooks from the cloud   |
-| Sync a notebook                  | Syncs a single notebook chosen from a prompt |
-| Import .rmdoc file               | Import a local .rmdoc file as images         |
+| Command                          | Description                                         |
+| -------------------------------- | --------------------------------------------------- |
+| Open reMarkable panel            | Opens the sidebar listing all notebooks             |
+| Open reMarkable sync log         | Opens the live sync + OCR activity log              |
+| Connect to reMarkable cloud      | Opens the authentication modal                      |
+| Disconnect from reMarkable cloud | Clears stored tokens                                |
+| List notebooks                   | Fetches and lists notebooks from the cloud          |
+| Sync a notebook                  | Syncs a single notebook chosen from a prompt        |
+| Import .rmdoc file               | Import a local .rmdoc file as images                |
+| Fix OCR image links in notes     | Repoint broken OCR figure links to real page images |
+
+## Fixing OCR figure links
+
+When OCR detects a figure it emits an image link, but to a path that does not exist —
+showing as "could not be found" in the note. The plugin repoints these to an embed of
+the page's **own saved image** (one per page). Notes written before this behavior are
+fixed automatically once on the next plugin load (no re-OCR); run **Fix OCR image
+links in notes** to apply it again at any time (safe to re-run). Requires page images
+to be saved (the **Save images** setting).
 
 ## Sync log
 
