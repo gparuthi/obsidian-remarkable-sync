@@ -148,6 +148,16 @@ export class RemarkablePanelView extends ItemView {
             void this.refreshNotebooks()
         })
 
+        // Open the sync log view
+        const syncLogBtn = actions.createEl('button', {
+            cls: 'remarkable-btn remarkable-btn-icon',
+            attr: { 'aria-label': 'Open reMarkable sync log' }
+        })
+        setIcon(syncLogBtn, 'scroll-text')
+        syncLogBtn.addEventListener('click', () => {
+            void this.plugin.activateSyncLogView()
+        })
+
         // Auth status indicator
         const statusEl = header.createDiv({ cls: 'remarkable-auth-status' })
         if (this.plugin.isConnected) {
@@ -502,6 +512,7 @@ export class RemarkablePanelView extends ItemView {
     }
 
     private async processNotebook(notebook: NotebookSummary): Promise<void> {
+        this.plugin.syncLogService.emit('info', `Sync started — manual (${notebook.visibleName})`)
         this.notebookProgress.set(notebook.id, {
             status: 'downloading',
             currentPage: 0,

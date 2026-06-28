@@ -53,6 +53,7 @@ export function createNotebookPipelineService(
                     totalPages: 0,
                     error: 'Download failed'
                 })
+                plugin.syncLogService.emit('error', `${notebook.visibleName}: download failed`)
                 return false
             }
 
@@ -66,6 +67,7 @@ export function createNotebookPipelineService(
                     totalPages: 0,
                     error: 'Parse failed'
                 })
+                plugin.syncLogService.emit('error', `${notebook.visibleName}: parse failed`)
                 return false
             }
 
@@ -74,6 +76,7 @@ export function createNotebookPipelineService(
 
             if (contentPages.length === 0) {
                 new Notice(`${notebook.visibleName}: No pages with content found`)
+                plugin.syncLogService.emit('info', `${notebook.visibleName}: no pages with content`)
                 onProgress({ status: 'done', currentPage: 0, totalPages: 0 })
                 // Record sync state for blank notebooks too, so an unattended
                 // all-notebooks sync skips this (unchanged) notebook on the next
@@ -100,6 +103,10 @@ export function createNotebookPipelineService(
             const interDelayMs = Math.max(0, settings.ocrRequestDelayMs)
             let allPagesOcrd = true
             let madeOcrRequest = false
+            // Counts for the per-notebook sync-log summary.
+            let ocrTranscribed = 0
+            let ocrUnchanged = 0
+            let ocrFailed = 0
 
             // Step 3: Render (and, when enabled, OCR) each page — serially, one at a
             // time, never a parallel burst.
@@ -137,6 +144,11 @@ export function createNotebookPipelineService(
                         nextPages[page.pageId] = prev
                     }
                     allPagesOcrd = false
+                    ocrFailed++
+                    plugin.syncLogService.emit(
+                        'error',
+                        `${notebook.visibleName} p${pageIndex + 1}: render failed`
+                    )
                     continue
                 }
 
@@ -144,6 +156,7 @@ export function createNotebookPipelineService(
                 if (prev && prev.srcHash === srcHash) {
                     // Already OCR'd and unchanged → skip (no request, no rewrite).
                     nextPages[page.pageId] = prev
+                    ocrUnchanged++
                     continue
                 }
 
@@ -162,6 +175,10 @@ export function createNotebookPipelineService(
                             onRateLimit: ({ attempt, status }) => {
                                 new Notice(
                                     `${notebook.visibleName}: rate limited (HTTP ${status}) — backing off, retrying page ${pageIndex + 1} (attempt ${attempt})`
+                                )
+                                plugin.syncLogService.emit(
+                                    'info',
+                                    `${notebook.visibleName} p${pageIndex + 1}: rate limited (HTTP ${status}) — retrying (attempt ${attempt})`
                                 )
                             }
                         }
@@ -192,12 +209,23 @@ export function createNotebookPipelineService(
                             totalPages,
                             { ...nextPages }
                         )
+                        ocrTranscribed++
+                        plugin.syncLogService.emit(
+                            'success',
+                            `${notebook.visibleName} p${pageIndex + 1}: transcribed`
+                        )
                     } catch (writeError) {
                         // Persist failed → roll this page back so it retries next sync.
+                        const reason =
+                            writeError instanceof Error ? writeError.message : 'unknown error'
                         log(
                             `Failed to persist OCR page ${pageIndex + 1} for ${notebook.visibleName}`,
                             'error',
                             writeError
+                        )
+                        plugin.syncLogService.emit(
+                            'error',
+                            `${notebook.visibleName} p${pageIndex + 1}: failed to write note — ${reason}`
                         )
                         if (prev) {
                             nextPages[page.pageId] = prev
@@ -205,11 +233,13 @@ export function createNotebookPipelineService(
                             delete nextPages[page.pageId]
                         }
                         allPagesOcrd = false
+                        ocrFailed++
                     }
                 } catch (error) {
                     // Fail-soft after retries: surface a clear per-page error and keep
                     // going (don't abort the notebook). Leave the prior block/state
                     // intact so the next sync retries just this page.
+                    const reason = error instanceof Error ? error.message : 'unknown error'
                     log(
                         `OCR failed for ${notebook.visibleName} page ${pageIndex + 1}`,
                         'warn',
@@ -218,15 +248,33 @@ export function createNotebookPipelineService(
                     new Notice(
                         `${notebook.visibleName}: OCR failed for page ${pageIndex + 1} — will retry on next sync`
                     )
+                    plugin.syncLogService.emit(
+                        'error',
+                        `${notebook.visibleName} p${pageIndex + 1}: OCR failed — ${reason}`
+                    )
                     if (prev) {
                         nextPages[page.pageId] = prev
                     }
                     allPagesOcrd = false
+                    ocrFailed++
                 }
             }
 
             onProgress({ status: 'done', currentPage: totalPages, totalPages })
             new Notice(`${notebook.visibleName}: Processed ${totalPages} pages`)
+
+            if (ocrEnabled) {
+                const summaryStatus = ocrFailed > 0 ? 'error' : 'success'
+                plugin.syncLogService.emit(
+                    summaryStatus,
+                    `${notebook.visibleName}: ${ocrTranscribed} transcribed, ${ocrUnchanged} unchanged, ${ocrFailed} failed`
+                )
+            } else {
+                plugin.syncLogService.emit(
+                    'success',
+                    `${notebook.visibleName}: rendered ${totalPages} pages`
+                )
+            }
 
             // Final sync-state write. Advance the cloud mtime only when OCR is off or
             // every page is OCR'd, so the notebook is considered "done"; otherwise keep
@@ -253,6 +301,7 @@ export function createNotebookPipelineService(
         } catch (error) {
             const message = error instanceof Error ? error.message : 'Unknown error'
             log(`Pipeline failed for ${notebook.visibleName}`, 'error', error)
+            plugin.syncLogService.emit('error', `${notebook.visibleName}: ${message}`)
             onProgress({ status: 'error', currentPage: 0, totalPages: 0, error: message })
             new Notice(`Error processing ${notebook.visibleName}: ${message}`)
             return false

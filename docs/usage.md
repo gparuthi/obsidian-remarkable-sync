@@ -36,11 +36,23 @@ Your device token is stored at `~/.remarkable-sync/token.json` and persists acro
 | Command                          | Description                                  |
 | -------------------------------- | -------------------------------------------- |
 | Open reMarkable panel            | Opens the sidebar listing all notebooks      |
+| Open reMarkable sync log         | Opens the live sync + OCR activity log       |
 | Connect to reMarkable cloud      | Opens the authentication modal               |
 | Disconnect from reMarkable cloud | Clears stored tokens                         |
 | List notebooks                   | Fetches and lists notebooks from the cloud   |
 | Sync a notebook                  | Syncs a single notebook chosen from a prompt |
 | Import .rmdoc file               | Import a local .rmdoc file as images         |
+
+## Sync log
+
+Open **Open reMarkable sync log** (or the log button in the panel header) to watch
+sync activity live in a sidebar. Each run shows its trigger (startup / interval /
+manual) and, per page, the OCR outcome — ✓ transcribed, ⊘ unchanged, or ✗ failed
+**with the reason** (e.g. `OCR server returned HTTP 429: rate_limited`), plus a
+per-notebook summary. The newest event is shown at the top; the view keeps the last
+~200 events in memory (cleared on reload) and has a **Clear** button. This is the
+quickest way to see why a sync stalled — for example a rate-limited OCR server —
+without opening the developer console.
 
 ## Using the Panel
 
@@ -52,6 +64,7 @@ The panel shows all your reMarkable notebooks grouped by folder. A connection st
 - **Sync all** (refresh icon with slash) — syncs all notebooks that need updating (have `needs-sync` or `never-synced` status)
 - **Sync selected** — appears when notebooks are selected; syncs only the checked notebooks
 - **Refresh** (refresh icon) — re-fetches the notebook list from the cloud
+- **Sync log** (scroll icon) — opens the live sync + OCR activity log
 
 ### Searching and filtering
 

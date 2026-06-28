@@ -14,6 +14,8 @@ export interface SyncAllResult {
 export interface SyncAllOptions {
     /** Suppress this routine's own start/no-op notices (for unattended runs). */
     silent?: boolean
+    /** What kicked off this run — shown in the in-app sync log. */
+    trigger?: 'startup' | 'interval' | 'manual'
     /**
      * Restrict to notebooks within this cloud folder (recursive). Empty/undefined
      * = all folders. Used to scope auto-sync to e.g. `/2026`.
@@ -63,12 +65,22 @@ export async function syncAllNotebooks(
     }
     plugin.isSyncing = true
 
+    const trigger = options.trigger ?? 'manual'
+    const scope = options.newestOnly
+        ? ` (newest in ${options.folder || 'all folders'})`
+        : options.folder
+          ? ` (${options.folder})`
+          : ''
+    plugin.syncLogService.emit('info', `Sync started — ${trigger}${scope}`)
+
     try {
         let notebooks
         try {
             notebooks = await plugin.cloudService.listDocuments()
         } catch (error) {
+            const reason = error instanceof Error ? error.message : 'unknown error'
             log('Sync all: failed to list notebooks', 'error', error)
+            plugin.syncLogService.emit('error', `Failed to fetch notebook list: ${reason}`)
             if (!silent) {
                 new Notice('Failed to fetch notebook list')
             }
@@ -138,6 +150,7 @@ export async function syncAllNotebooks(
 
         const summary = `reMarkable sync: ${result.synced} synced, ${result.skipped} unchanged, ${result.failed} failed`
         log(summary, 'info', result)
+        plugin.syncLogService.emit(result.failed > 0 ? 'error' : 'success', summary)
         // Always surface a summary on a manual run; for unattended runs, surface
         // only when something actually happened (synced or failed) so a quiet
         // "nothing changed" tick stays quiet.

@@ -15,6 +15,14 @@ export function registerCommands(plugin: RemarkableSyncPlugin): void {
     })
 
     plugin.addCommand({
+        id: 'remarkable-open-sync-log',
+        name: 'Open reMarkable sync log',
+        callback: () => {
+            void plugin.activateSyncLogView()
+        }
+    })
+
+    plugin.addCommand({
         id: 'remarkable-connect-device',
         name: 'Connect to reMarkable cloud',
         callback: () => connectDevice(plugin)

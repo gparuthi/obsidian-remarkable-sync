@@ -55,6 +55,7 @@ export async function syncNotebook(plugin: RemarkableSyncPlugin): Promise<void> 
 
         new NotebookSuggestModal(plugin.app, notebooks, (notebook) => {
             new Notice(`Syncing ${notebook.visibleName}...`)
+            plugin.syncLogService.emit('info', `Sync started — manual (${notebook.visibleName})`)
             void plugin.pipelineService.processNotebook(notebook, (progress) => {
                 if (progress.status === 'done') {
                     log(`Synced ${notebook.visibleName}`, 'info')
