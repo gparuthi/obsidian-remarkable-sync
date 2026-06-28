@@ -55,13 +55,14 @@ If the plugin isn't listed in the community catalog yet (or you want a specific 
 
 ## Commands
 
-| Command                          | Description                                         |
-| -------------------------------- | --------------------------------------------------- |
-| Open reMarkable panel            | Opens the sidebar panel listing notebooks           |
-| Open reMarkable sync log         | Opens the sidebar panel of live sync + OCR activity |
-| Connect to reMarkable cloud      | Opens the authentication modal                      |
-| Disconnect from reMarkable cloud | Clears stored tokens                                |
-| Import .rmdoc file               | Import a local .rmdoc file as images                |
+| Command                          | Description                                            |
+| -------------------------------- | ------------------------------------------------------ |
+| Open reMarkable panel            | Opens the sidebar panel listing notebooks              |
+| Open reMarkable sync log         | Opens the sidebar panel of live sync + OCR activity    |
+| Connect to reMarkable cloud      | Opens the authentication modal                         |
+| Disconnect from reMarkable cloud | Clears stored tokens                                   |
+| Import .rmdoc file               | Import a local .rmdoc file as images                   |
+| Fix OCR image links in notes     | Repoint broken OCR figure links to the real page image |
 
 ### Sync log
 
@@ -106,6 +107,12 @@ retried on the next sync. Each page's transcription is saved as soon as it succe
 so if a sync is interrupted (or hits a persistent rate limit), the next sync
 **resumes from the pages still missing OCR** — it never restarts from scratch or
 duplicates pages.
+
+When the OCR engine detects a figure/drawing it emits an image link; the plugin
+repoints that to an embed of the page's **own saved image** (one embed per page), so
+figures show up inline instead of as a broken link. Notes written before this
+behavior existed are fixed automatically once (on the next plugin load); you can also
+re-run it anytime with the **Fix OCR image links in notes** command.
 
 ## Output Format
 

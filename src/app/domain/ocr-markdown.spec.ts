@@ -2,8 +2,11 @@ import { test, expect, describe } from 'bun:test'
 import {
     assembleNotebookMarkdown,
     computeOcrHash,
+    migrateBlocksImagePlaceholders,
+    parsePageNumber,
     parseManagedBlocks,
-    renderBlock
+    renderBlock,
+    rewriteImagePlaceholders
 } from './ocr-markdown'
 import type { OcrPageInput } from './ocr-markdown'
 
@@ -187,6 +190,124 @@ describe('assembleNotebookMarkdown — incremental persist / resume', () => {
         const ids = blocksOf(again).map((b) => b.pageId)
         expect(ids).toEqual(['p2', 'p1', 'p0'])
         expect(new Set(ids).size).toBe(3)
+    })
+})
+
+describe('rewriteImagePlaceholders', () => {
+    test('embeds the real page image in place of img-N placeholders', () => {
+        const md = 'Heading\n\n![img-0.jpeg](img-0.jpeg)\n\nmore text'
+        const out = rewriteImagePlaceholders(md, 'handwritten/2026/6/6-P020.jpeg')
+        expect(out).toContain('![[handwritten/2026/6/6-P020.jpeg]]')
+        expect(out).not.toContain('](img-0.jpeg)')
+        expect(out).toContain('Heading')
+        expect(out).toContain('more text')
+    })
+
+    test('collapses multiple placeholders on a page into ONE embed', () => {
+        const md =
+            '![img-0.jpeg](img-0.jpeg)\ntext\n![img-1.jpeg](img-1.jpeg)\n![img-2.jpeg](img-2.jpeg)'
+        const out = rewriteImagePlaceholders(md, 'p/6-P001.jpeg')
+        const embeds = out.match(/!\[\[p\/6-P001\.jpeg\]\]/g) ?? []
+        expect(embeds).toHaveLength(1)
+        expect(out).not.toContain('](img-')
+        expect(out).toContain('text')
+    })
+
+    test('drops placeholders (no dangling ref) when no page image is available', () => {
+        const md = 'a\n![img-0.jpeg](img-0.jpeg)\nb'
+        const out = rewriteImagePlaceholders(md, undefined)
+        expect(out).not.toContain('img-0')
+        expect(out).not.toContain('![[')
+        expect(out).toBe('a\nb')
+    })
+
+    test('preserves user-added image links with a real target or custom alt', () => {
+        const md = '![my figure](attachments/photo.png)\n![img-0.jpeg](img-0.jpeg)'
+        const out = rewriteImagePlaceholders(md, 'imgs/6-P003.jpeg')
+        expect(out).toContain('![my figure](attachments/photo.png)')
+        expect(out).toContain('![[imgs/6-P003.jpeg]]')
+    })
+
+    test('is a no-op when there are no placeholders', () => {
+        const md = 'just text\n## heading\n- item'
+        expect(rewriteImagePlaceholders(md, 'x/y.jpeg')).toBe(md)
+    })
+})
+
+describe('parsePageNumber', () => {
+    test('parses "Page N"', () => {
+        expect(parsePageNumber('Page 20')).toBe(20)
+        expect(parsePageNumber('Page 1')).toBe(1)
+    })
+    test('returns undefined for non-matching labels', () => {
+        expect(parsePageNumber('Cover')).toBeUndefined()
+        expect(parsePageNumber('Page')).toBeUndefined()
+        expect(parsePageNumber('')).toBeUndefined()
+    })
+})
+
+describe('migrateBlocksImagePlaceholders', () => {
+    // Build a note as the pipeline would have (pre-fix: raw img-N placeholders).
+    function noteWith(pageId: string, pageIndex: number, markdown: string): string {
+        return assembleNotebookMarkdown('', [input(pageId, pageIndex, markdown)])
+    }
+
+    const resolve = (n: number | undefined): string | undefined =>
+        n === undefined ? undefined : `handwritten/2026/6/6-P${String(n).padStart(3, '0')}.jpeg`
+
+    test('rewrites a block and reconciles its ocrHash so it is not later "hand-edited"', () => {
+        const note = noteWith('pg1', 19, 'Notes\n\n![img-0.jpeg](img-0.jpeg)') // Page 20
+        const { content, cleaned } = migrateBlocksImagePlaceholders(note, resolve)
+
+        expect(content).toContain('![[handwritten/2026/6/6-P020.jpeg]]')
+        expect(content).not.toContain('](img-0.jpeg)')
+
+        // The block's new ocr= marker matches its rewritten body → assembling an
+        // update for the same page replaces in place, never demotes to "superseded".
+        const [block] = blocksOf(content)
+        expect(block).toBeDefined()
+        expect(computeOcrHash(block!.body)).toBe(block!.ocrHash)
+
+        expect(cleaned).toHaveLength(1)
+        expect(cleaned[0]).toEqual({ pageId: 'pg1', ocrHash: block!.ocrHash })
+    })
+
+    test('does not demote a migrated block on a subsequent same-content sync', () => {
+        const note = noteWith('pg1', 0, 'text ![img-0.jpeg](img-0.jpeg)') // Page 1
+        const { content } = migrateBlocksImagePlaceholders(note, resolve)
+        // Re-OCR of the same page yields the same cleaned markdown → replace in place.
+        const reSync = assembleNotebookMarkdown(content, [
+            input('pg1', 0, 'text ![[handwritten/2026/6/6-P001.jpeg]]')
+        ])
+        expect(reSync).not.toContain('superseded')
+        expect(blocksOf(reSync)).toHaveLength(1)
+    })
+
+    test('is idempotent and a no-op when there is nothing to fix', () => {
+        const note = noteWith('pg1', 0, 'plain transcription, no figures')
+        const { content, cleaned } = migrateBlocksImagePlaceholders(note, resolve)
+        expect(cleaned).toHaveLength(0)
+        expect(content).toBe(note)
+        // running again on already-migrated content also does nothing
+        const dirty = noteWith('pg2', 4, '![img-0.jpeg](img-0.jpeg)')
+        const once = migrateBlocksImagePlaceholders(dirty, resolve).content
+        const twice = migrateBlocksImagePlaceholders(once, resolve)
+        expect(twice.cleaned).toHaveLength(0)
+        expect(twice.content).toBe(once)
+    })
+
+    test('drops placeholders when the page image cannot be resolved', () => {
+        const note = noteWith('pg1', 0, 'a\n![img-0.jpeg](img-0.jpeg)\nb')
+        const { content } = migrateBlocksImagePlaceholders(note, () => undefined)
+        expect(content).not.toContain('img-0')
+        expect(content).not.toContain('![[')
+    })
+
+    test('leaves content outside managed blocks untouched', () => {
+        const note = `# My notes\n\n${noteWith('pg1', 0, '![img-0.jpeg](img-0.jpeg)')}\nfooter`
+        const { content } = migrateBlocksImagePlaceholders(note, resolve)
+        expect(content).toContain('# My notes')
+        expect(content).toContain('footer')
     })
 })
 

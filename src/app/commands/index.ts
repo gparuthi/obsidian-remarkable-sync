@@ -6,6 +6,7 @@ import { listNotebooks } from './list-notebooks'
 import { syncNotebook } from './sync-notebook'
 import { syncAllNotebooks } from './sync-all-notebooks'
 import { importRmdoc } from './import-rmdoc'
+import { cleanImagePlaceholdersCommand } from './clean-image-placeholders'
 
 export function registerCommands(plugin: RemarkableSyncPlugin): void {
     plugin.addCommand({
@@ -76,6 +77,14 @@ export function registerCommands(plugin: RemarkableSyncPlugin): void {
         name: 'Import .rmdoc file',
         callback: () => {
             importRmdoc(plugin)
+        }
+    })
+
+    plugin.addCommand({
+        id: 'remarkable-clean-image-placeholders',
+        name: 'Fix OCR image links in notes',
+        callback: () => {
+            void cleanImagePlaceholdersCommand(plugin)
         }
     })
 }
