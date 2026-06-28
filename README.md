@@ -72,6 +72,7 @@ If the plugin isn't listed in the community catalog yet (or you want a specific 
 | Server URL                   | `""`                        | Base URL of your rmfakecloud server (only when rmfakecloud is enabled)                                                       |
 | Transcribe pages to markdown | `false`                     | Send each new/changed synced page to a **local** OCR server and assemble one markdown note per notebook (newest page on top) |
 | OCR server URL               | `http://localhost:1250/ocr` | Endpoint the page image is posted to (only when transcription is enabled)                                                    |
+| OCR request delay (ms)       | `400`                       | Pause between per-page OCR requests to stay under the OCR provider's rate limit (0 disables)                                 |
 
 ### OCR transcription
 
@@ -84,6 +85,15 @@ blocks is never touched. If you hand-edit inside a block, your edit is preserved
 is moved into a collapsed "superseded" callout) rather than overwritten. Unchanged
 pages are not re-sent, so no needless OCR calls are made. Only the page image is
 sent, and only to the URL you configure — no other network destination.
+
+Pages are OCR'd **one at a time** with a small delay between requests (**OCR request
+delay**) to stay under the OCR provider's rate limit. A rate-limited or transient
+server error (HTTP 429 / 5xx) is retried with exponential backoff, honoring the
+server's `Retry-After`; after a few attempts the page is skipped (non-fatal) and
+retried on the next sync. Each page's transcription is saved as soon as it succeeds,
+so if a sync is interrupted (or hits a persistent rate limit), the next sync
+**resumes from the pages still missing OCR** — it never restarts from scratch or
+duplicates pages.
 
 ## Output Format
 

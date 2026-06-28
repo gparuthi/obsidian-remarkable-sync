@@ -15,6 +15,7 @@ import { ocrPageImage } from '../ocr/ocr.service'
 import { assembleNotebookMarkdown, computeOcrHash } from '../../domain/ocr-markdown'
 import type { OcrPageInput } from '../../domain/ocr-markdown'
 import { hashBytes } from '../../../utils/hash'
+import { sleep } from '../../../utils/sleep'
 import type { PageOcrState } from '../../domain/sync-state'
 
 export type PipelineStatus = 'idle' | 'downloading' | 'parsing' | 'rendering' | 'done' | 'error'
@@ -84,19 +85,28 @@ export function createNotebookPipelineService(
 
             const totalPages = contentPages.length
 
-            // Per-page OCR state from the previous sync, so an unchanged page is
-            // neither re-OCR'd nor re-sent to the OCR endpoint.
+            // Per-page OCR state from the previous sync. A page whose rendered image
+            // hash is unchanged is skipped, so a re-sync RESUMES only the pages still
+            // missing OCR — the syncStore IS the implicit worklist (no queue).
             const ocrEnabled = settings.ocrEnabled
-            const prevPages = plugin.syncStoreService.getState(notebook.id)?.pages ?? {}
-            const ocrUpdates: OcrPageInput[] = []
+            const prevState = plugin.syncStoreService.getState(notebook.id)
+            const prevPages = prevState?.pages ?? {}
+            // Keep the notebook's mtime at its prior value until every page is OCR'd,
+            // so a partial run stays "needs sync" and the next sync resumes it.
+            const prevMtime = prevState?.lastModifiedCloud ?? 0
+            const lastModifiedCloud = parseInt(notebook.lastModified, 10) || Date.now()
             const nextPages: Record<string, PageOcrState> = {}
+            const mdPath = buildNotebookMarkdownPath(settings.targetFolder, notebook.visibleName)
+            const interDelayMs = Math.max(0, settings.ocrRequestDelayMs)
+            let allPagesOcrd = true
+            let madeOcrRequest = false
 
-            // Step 3: Render each page
+            // Step 3: Render (and, when enabled, OCR) each page — serially, one at a
+            // time, never a parallel burst.
             for (let i = 0; i < contentPages.length; i++) {
                 const page = contentPages[i]!
                 const pageIndex = page.pageIndex
 
-                // Render page to image
                 onProgress({ status: 'rendering', currentPage: i + 1, totalPages })
                 const imageData = await renderPage(
                     page,
@@ -116,100 +126,128 @@ export function createNotebookPipelineService(
                     )
                 }
 
-                if (ocrEnabled) {
-                    const prev = prevPages[page.pageId]
-                    if (!imageData) {
-                        // Render produced no image → keep any prior OCR state and
-                        // its block intact (don't drop it as if the page were gone).
-                        if (prev) {
-                            nextPages[page.pageId] = prev
-                        }
-                    } else {
-                        const srcHash = hashBytes(imageData)
-                        if (prev && prev.srcHash === srcHash) {
-                            // Source unchanged → keep prior OCR; no endpoint call, no
-                            // block rewrite.
-                            nextPages[page.pageId] = prev
-                        } else {
-                            try {
-                                const markdown = await ocrPageImage(
-                                    settings.mdserverOcrUrl,
-                                    imageData,
-                                    settings.imageFormat
+                if (!ocrEnabled) {
+                    continue
+                }
+
+                const prev = prevPages[page.pageId]
+                if (!imageData) {
+                    // Couldn't render → keep prior OCR state/block; retry next sync.
+                    if (prev) {
+                        nextPages[page.pageId] = prev
+                    }
+                    allPagesOcrd = false
+                    continue
+                }
+
+                const srcHash = hashBytes(imageData)
+                if (prev && prev.srcHash === srcHash) {
+                    // Already OCR'd and unchanged → skip (no request, no rewrite).
+                    nextPages[page.pageId] = prev
+                    continue
+                }
+
+                // Pace requests to stay under the OCR provider's rate limit.
+                if (madeOcrRequest && interDelayMs > 0) {
+                    await sleep(interDelayMs)
+                }
+                madeOcrRequest = true
+
+                try {
+                    const markdown = await ocrPageImage(
+                        settings.mdserverOcrUrl,
+                        imageData,
+                        settings.imageFormat,
+                        {
+                            onRateLimit: ({ attempt, status }) => {
+                                new Notice(
+                                    `${notebook.visibleName}: rate limited (HTTP ${status}) — backing off, retrying page ${pageIndex + 1} (attempt ${attempt})`
                                 )
-                                const ocrHash = computeOcrHash(markdown)
-                                ocrUpdates.push({
-                                    pageId: page.pageId,
-                                    pageIndex,
-                                    label: `Page ${pageIndex + 1}`,
-                                    markdown,
-                                    srcHash,
-                                    ocrHash
-                                })
-                                nextPages[page.pageId] = {
-                                    pageId: page.pageId,
-                                    srcHash,
-                                    ocrHash
-                                }
-                            } catch (error) {
-                                // Fail-soft: one page's OCR failure must not abort
-                                // the sync or wipe the note. Leave the prior block
-                                // intact; carry forward old state (still ≠ srcHash)
-                                // so the next sync retries this page.
-                                log(
-                                    `OCR failed for ${notebook.visibleName} page ${pageIndex + 1}`,
-                                    'warn',
-                                    error
-                                )
-                                if (prev) {
-                                    nextPages[page.pageId] = prev
-                                }
                             }
                         }
-                    }
-                }
-            }
-
-            // Assemble one markdown note per notebook (newest page on top). On a
-            // write failure, roll the updated pages' state back so they retry.
-            if (ocrEnabled && ocrUpdates.length > 0) {
-                try {
-                    const mdPath = buildNotebookMarkdownPath(
-                        settings.targetFolder,
-                        notebook.visibleName
                     )
-                    const existing = await readNotebookMarkdown(plugin.app.vault, mdPath)
-                    const assembled = assembleNotebookMarkdown(existing, ocrUpdates)
-                    await writeNotebookMarkdown(plugin.app.vault, mdPath, assembled)
-                } catch (error) {
-                    log(`Failed to write OCR markdown for ${notebook.visibleName}`, 'error', error)
-                    for (const update of ocrUpdates) {
-                        const prev = prevPages[update.pageId]
-                        if (prev) {
-                            nextPages[update.pageId] = prev
-                        } else {
-                            delete nextPages[update.pageId]
+                    const ocrHash = computeOcrHash(markdown)
+                    nextPages[page.pageId] = { pageId: page.pageId, srcHash, ocrHash }
+
+                    // Persist incrementally: write this page's block into the note and
+                    // record its ocrHash NOW. A crash/restart then loses nothing and
+                    // the next sync resumes from the still-missing pages. Pass a copy
+                    // of nextPages so immer's frozen snapshot doesn't freeze our live
+                    // working map.
+                    try {
+                        const existing = await readNotebookMarkdown(plugin.app.vault, mdPath)
+                        const update: OcrPageInput = {
+                            pageId: page.pageId,
+                            pageIndex,
+                            label: `Page ${pageIndex + 1}`,
+                            markdown,
+                            srcHash,
+                            ocrHash
                         }
+                        const assembled = assembleNotebookMarkdown(existing, [update])
+                        await writeNotebookMarkdown(plugin.app.vault, mdPath, assembled)
+                        await plugin.syncStoreService.updateState(
+                            notebook.id,
+                            prevMtime,
+                            totalPages,
+                            { ...nextPages }
+                        )
+                    } catch (writeError) {
+                        // Persist failed → roll this page back so it retries next sync.
+                        log(
+                            `Failed to persist OCR page ${pageIndex + 1} for ${notebook.visibleName}`,
+                            'error',
+                            writeError
+                        )
+                        if (prev) {
+                            nextPages[page.pageId] = prev
+                        } else {
+                            delete nextPages[page.pageId]
+                        }
+                        allPagesOcrd = false
                     }
+                } catch (error) {
+                    // Fail-soft after retries: surface a clear per-page error and keep
+                    // going (don't abort the notebook). Leave the prior block/state
+                    // intact so the next sync retries just this page.
+                    log(
+                        `OCR failed for ${notebook.visibleName} page ${pageIndex + 1}`,
+                        'warn',
+                        error
+                    )
+                    new Notice(
+                        `${notebook.visibleName}: OCR failed for page ${pageIndex + 1} — will retry on next sync`
+                    )
+                    if (prev) {
+                        nextPages[page.pageId] = prev
+                    }
+                    allPagesOcrd = false
                 }
             }
 
             onProgress({ status: 'done', currentPage: totalPages, totalPages })
             new Notice(`${notebook.visibleName}: Processed ${totalPages} pages`)
 
-            // Update sync state. Persist per-page OCR state only when OCR ran and
-            // produced at least one entry; an empty map would otherwise wipe prior
-            // OCR progress (e.g. a transient run where every page failed to render).
-            // When omitted, updateState leaves existing OCR state untouched.
-            const lastModifiedCloud = parseInt(notebook.lastModified, 10) || Date.now()
-            const persistPages =
-                ocrEnabled && Object.keys(nextPages).length > 0 ? nextPages : undefined
-            await plugin.syncStoreService.updateState(
-                notebook.id,
-                lastModifiedCloud,
-                totalPages,
-                persistPages
-            )
+            // Final sync-state write. Advance the cloud mtime only when OCR is off or
+            // every page is OCR'd, so the notebook is considered "done"; otherwise keep
+            // the prior mtime so the next sync re-enters and resumes the missing pages.
+            if (ocrEnabled) {
+                const persistPages =
+                    Object.keys(nextPages).length > 0 ? { ...nextPages } : undefined
+                const finalMtime = allPagesOcrd ? lastModifiedCloud : prevMtime
+                await plugin.syncStoreService.updateState(
+                    notebook.id,
+                    finalMtime,
+                    totalPages,
+                    persistPages
+                )
+            } else {
+                await plugin.syncStoreService.updateState(
+                    notebook.id,
+                    lastModifiedCloud,
+                    totalPages
+                )
+            }
 
             return true
         } catch (error) {

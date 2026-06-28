@@ -37,4 +37,29 @@ export function renderOcrSection(containerEl: HTMLElement, plugin: RemarkableSyn
                 .setValue(plugin.settings.mdserverOcrUrl)
                 .onChange(saveUrl)
         })
+
+    new Setting(containerEl)
+        .setName('OCR request delay (ms)')
+        .setDesc(
+            'Pause between per-page OCR requests to stay under the OCR provider rate limit. Pages are OCR’d one at a time; rate-limited pages are retried with backoff. 0 disables the delay.'
+        )
+        .addText((text) => {
+            const saveDelay = debounce(
+                async (value: string) => {
+                    const parsed = parseInt(value, 10)
+                    if (!Number.isFinite(parsed) || parsed < 0) {
+                        return
+                    }
+                    await plugin.updateSettings((draft) => {
+                        draft.ocrRequestDelayMs = parsed
+                    })
+                },
+                500,
+                true
+            )
+
+            text.setPlaceholder('400')
+                .setValue(String(plugin.settings.ocrRequestDelayMs))
+                .onChange(saveDelay)
+        })
 }

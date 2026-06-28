@@ -19,6 +19,8 @@ export interface PluginSettings {
     ocrEnabled: boolean
     /** URL of the local md_capture_server `/ocr` endpoint (image in → markdown out). */
     mdserverOcrUrl: string
+    /** Delay (ms) between per-page OCR requests, to stay under the provider's rate limit. */
+    ocrRequestDelayMs: number
     syncStore: SyncStore
 }
 
@@ -36,5 +38,6 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     autoSyncNewestOnly: true,
     ocrEnabled: false,
     mdserverOcrUrl: 'http://localhost:1250/ocr',
+    ocrRequestDelayMs: 400,
     syncStore: DEFAULT_SYNC_STORE
 }

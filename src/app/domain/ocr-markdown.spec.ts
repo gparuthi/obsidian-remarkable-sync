@@ -150,6 +150,46 @@ describe('assembleNotebookMarkdown — marker injection', () => {
     })
 })
 
+describe('assembleNotebookMarkdown — incremental persist / resume', () => {
+    // The pipeline now folds pages in one at a time (writing after each), so a
+    // crash/restart resumes from the remaining pages. Folding individually must
+    // produce the same newest-on-top order as a batch, with no duplicate blocks.
+    function foldPages(count: number, start = 0): string {
+        let md = ''
+        for (let i = start; i < count; i++) {
+            md = assembleNotebookMarkdown(md, [input(`p${i}`, i, `page ${i}`)])
+        }
+        return md
+    }
+
+    test('folding pages one at a time yields newest-on-top, no duplicates', () => {
+        const out = foldPages(4)
+        expect(blocksOf(out).map((b) => b.pageId)).toEqual(['p3', 'p2', 'p1', 'p0'])
+    })
+
+    test('resuming from a partial note appends only the missing pages, on top', () => {
+        const partial = foldPages(3) // crashed after 3 of 5 pages
+        // resume: pages p3, p4 still missing → folded in next sync
+        let resumed = partial
+        for (let i = 3; i < 5; i++) {
+            resumed = assembleNotebookMarkdown(resumed, [input(`p${i}`, i, `page ${i}`)])
+        }
+        const ids = blocksOf(resumed).map((b) => b.pageId)
+        expect(ids).toEqual(['p4', 'p3', 'p2', 'p1', 'p0'])
+        // no duplicate blocks for any page
+        expect(new Set(ids).size).toBe(ids.length)
+    })
+
+    test('re-folding an already-present page replaces in place (idempotent resume)', () => {
+        const md = foldPages(3)
+        // a redundant re-OCR of p1 (e.g. state not yet persisted) must not duplicate
+        const again = assembleNotebookMarkdown(md, [input('p1', 1, 'page 1')])
+        const ids = blocksOf(again).map((b) => b.pageId)
+        expect(ids).toEqual(['p2', 'p1', 'p0'])
+        expect(new Set(ids).size).toBe(3)
+    })
+})
+
 describe('parseManagedBlocks', () => {
     test('ignores an unterminated block (no matching close marker)', () => {
         const content = '<!-- rm:page=p1 src=s ocr=o -->\n## Page 1\nbody but no close'

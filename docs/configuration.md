@@ -19,6 +19,7 @@ All settings are accessible via **Settings → Community plugins → Remarkable 
 | Server URL                   | text     | `""`                        | Base URL of your rmfakecloud server (only shown when rmfakecloud is enabled)                    |
 | Transcribe pages to markdown | toggle   | `false`                     | OCR each new/changed synced page via a local server and assemble one markdown note per notebook |
 | OCR server URL               | text     | `http://localhost:1250/ocr` | Local endpoint each page image is posted to (only used when transcription is enabled)           |
+| OCR request delay (ms)       | text     | `400`                       | Pause between per-page OCR requests, to stay under the OCR provider rate limit (0 disables)     |
 
 ## OCR transcription
 
@@ -35,6 +36,20 @@ which returns markdown. The plugin writes one note per notebook
 - Unchanged pages are skipped, so the OCR server is not called again for them.
 - Only the page image is sent, and only to the URL you configure. The plugin holds
   no OCR/API keys — those stay on the local server.
+
+### Rate limiting and resume
+
+Pages are OCR'd **one at a time**, with the configurable **OCR request delay** between
+requests to stay under the OCR provider's rate limit. If a request is rate-limited or
+the server returns a transient error (HTTP 429 / 5xx), it is retried with exponential
+backoff that honors the server's `Retry-After` header; after a few attempts the page is
+skipped (non-fatal, surfaced as a Notice) and retried on the next sync.
+
+Each page's transcription is persisted as soon as it succeeds. If a sync is interrupted
+— Obsidian closed mid-run, or a persistent rate limit — the next sync **resumes from the
+pages still missing OCR** rather than restarting the whole notebook, and never duplicates
+pages. (Tip: lower **OCR request delay** to go faster, or raise it if you keep hitting
+rate limits.)
 
 ## Image Formats
 
